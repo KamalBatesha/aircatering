@@ -1,0 +1,2247 @@
+// import React, { useEffect, useState } from 'react';
+// import { Formik, Form } from 'formik';
+// import * as Yup from 'yup';
+// import { useQuery } from '@tanstack/react-query';
+// import dayjs from 'dayjs';
+// import { FaTimes, FaArrowRight, FaArrowLeft, FaCheck } from 'react-icons/fa';
+// import { DatePicker, TimePicker } from "@mui/x-date-pickers";
+// import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+// import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+// import CustomLookup from './HelperComponents/CustomLookup';
+
+// import {
+//    GetHeaderPriceList,
+//    GetFlightNumbersList,
+//    GetRegisterationList,
+//    GetAirCraftList,
+//    GetAgentsList,
+//    GetOperatorsList,
+//    GetBillToList,
+//    GetInvoiceToList,
+// } from '../assets/apis/SalesAPI';
+
+// import { CurrencyListSales } from '../assets/apis/FinanceApi';
+// import { GetPayTypes, GetStationsList } from '../assets/apis/PurchasingAPI';
+// import { useLangStore } from '../assets/store/langStore';
+// import { langText } from '../assets/constants/lang';
+// import useProductMutation from '../assets/apis/product/ProductMutation';
+// import toast from 'react-hot-toast';
+// import { useStationStore } from '../assets/store/stationStore';
+
+// // Validation Schemas
+
+
+// export default function CreateOrderModal({ isOpen, onClose }) {
+//    const [step, setStep] = useState(0);
+
+//    const { lang } = useLangStore();
+
+//    const Step1Schema = Yup.object().shape({
+//       station: Yup.number().required(langText.stationIsRequired[lang]),
+//       priceList: Yup.number().required(langText.priceListIsRequired[lang]),
+//       flightNumber: Yup.number().required(langText.flightNumberIsRequired[lang]),
+//       registration: Yup.number().required(langText.registrationIsRequired[lang]),
+//       aircraftType: Yup.number().required(langText.aircraftTypeIsRequired[lang]),
+//    });
+
+//    const Step2Schema = Yup.object().shape({
+//       agent: Yup.number().required(langText.agentIsRequired[lang]),
+//       operator: Yup.number().required(langText.operatorIsRequired[lang]),
+//       billTo: Yup.number().required(langText.billToIsRequired[lang]),
+//       invoiceTo: Yup.number().required(langText.invoiceToIsRequired[lang]),
+//       paymentMethod: Yup.number().required(langText.paymentMethodIsRequired[lang]),
+//       paymentCurrency: Yup.number().required(langText.paymentCurrencyIsRequired[lang]),
+//    });
+
+//    const Step3Schema = Yup.object().shape({
+//       arrivalDate: Yup.mixed().nullable().test('is-date', langText.arrivalDateIsRequired[lang], val => val && val.isValid()),
+//       departureDate: Yup.mixed().nullable().test('is-date', langText.departureDateIsRequired[lang], val => val && val.isValid())
+//          .test('is-after', langText.departureMustBeAfterArrival[lang], function (val) {
+//             const { arrivalDate } = this.parent;
+//             if (!val || !val.isValid() || !arrivalDate || !arrivalDate.isValid()) return true;
+//             return val.isAfter(arrivalDate);
+//          }),
+//    });
+//    const { createOrderByClientMutation } = useProductMutation();
+
+//    const validationSchemas = [Step1Schema, Step2Schema, Step3Schema];
+//    const { data: stations } = useQuery({ queryKey: ["stations"], queryFn: GetStationsList, enabled: isOpen });
+//    const { data: priceLists } = useQuery({ queryKey: ["priceLists"], queryFn: GetHeaderPriceList, enabled: isOpen });
+//    const { data: flightNumbers } = useQuery({ queryKey: ["flightNumbers"], queryFn: GetFlightNumbersList, enabled: isOpen });
+//    const { data: registrations } = useQuery({ queryKey: ["registrations"], queryFn: GetRegisterationList, enabled: isOpen });
+//    const { data: airCrafts } = useQuery({ queryKey: ["airCrafts"], queryFn: GetAirCraftList, enabled: isOpen });
+//    const { data: agents } = useQuery({ queryKey: ["agents"], queryFn: GetAgentsList, enabled: isOpen });
+//    const { data: operators } = useQuery({ queryKey: ["operators"], queryFn: GetOperatorsList, enabled: isOpen });
+//    const { data: billTo } = useQuery({ queryKey: ["billTo"], queryFn: GetBillToList, enabled: isOpen });
+//    const { data: invoiceTo } = useQuery({ queryKey: ["invoiceTo"], queryFn: GetInvoiceToList, enabled: isOpen });
+//    const { data: payTypes } = useQuery({ queryKey: ["payTypes"], queryFn: GetPayTypes, enabled: isOpen });
+//    const { data: currencyList } = useQuery({ queryKey: ["currencyListSales"], queryFn: CurrencyListSales, enabled: isOpen });
+//    const { selectedStation } = useStationStore();
+
+//    if (!isOpen) return null;
+
+
+//    const currentValidationSchema = validationSchemas[step];
+
+//    const handleSubmit = (values, actions) => {
+//       console.log("actions", actions);
+
+//       if (step === 0 || step === 1) {
+//          setStep(step + 1);
+//          actions.setTouched({});
+//          actions.setSubmitting(false);
+//       } else {
+//          // Final Submit
+//          console.log('Order created:', values);
+//          actions.setSubmitting(false);
+//          // current payload 
+//          //          {
+//          //     "station": 2,
+//          //     "priceList": 1,
+//          //     "flightNumber": 2,
+//          //     "registration": 2,
+//          //     "aircraftType": 3,
+//          //     "agent": 2,
+//          //     "operator": 2,
+//          //     "billTo": 3,
+//          //     "invoiceTo": 2,
+//          //     "paymentMethod": 2,
+//          //     "paymentCurrency": 2,
+//          //     "arrivalDate": "2026-06-22T21:00:00.000Z",
+//          //     "departureDate": "2026-06-23T21:00:00.000Z"
+//          // }
+
+//          // the needed payload          {
+//          //   "orderHeaderId": 0,
+//          //   "orderHeaderCutomerId": 0,
+//          //   "orderHeaderBillToId": 7,
+//          //   "orderHeaderOperatorId": 6,
+//          //   "orderHeaderAgentId": 2,
+//          //   "orderHeaderFlightArrivalDatTime": "2026-06-23T00:00:00.000Z",
+//          //   "orderHeaderArrivalDeliveryDate": "2026-06-24T00:00:00.000Z",
+//          //   "orderHeaderDeliveryDateTime": "2026-06-24T00:04:00.000Z",
+//          //   "orderHeaderDepatrialDateTime": "2026-06-26T00:00:00.000Z",
+//          //   "orderHeaderPaxnum": 0,
+//          //   "orderHeaderCrewNum": 0,
+//          //   "orderHeaderStationId": 3,
+//          //   "orderHeaderPriceListId": 1,
+//          //   "orderHeaderAcregId": 6,
+//          //   "orderHeaderInvoiceToId": 2,
+//          //   "orderHeaderPaymentMethodId": 3,
+//          //   "orderHeaderPaymentCurrencyId": 1,
+//          //   "orderHeaderActypeId": 6,
+//          //   "orderHeaderFlightNumberId": 5,
+//          //   "orderHeaderOrderdByID": null,
+//          //   "orderHeaderTransportationPercent": 0.05,
+//          //   "orderHeaderHasTransportaion": true,
+//          //   "orderHeaderAddPercent": 0,
+//          //   "orderHeaderDiscountPercent": 0,
+//          //   "orderHeaderHasAirportFees": false,
+//          //   "orderHeaderBelongToId": null,
+//          //   "orderHeaderHasRamTransportation": false,
+//          //   "orderHeaderHasHightLoader": false,
+//          //   "orderHeaderApplyMinmumFees": true,
+//          //   "orderHeaderCurrencyId": 2
+//          // }
+
+//          // the new payload 
+//          const orderHeaderPayload = {
+//             orderHeaderId: 0,
+//             orderHeaderCutomerId: 0,
+//             orderHeaderBillToID: values.billTo,
+//             orderHeaderOperatorID: values.operator,
+//             orderHeaderAgentId: values.agent,
+//             orderHeaderFlightArrivalDatTime: "2026-06-25T00:00:00.000Z",
+//             orderHeaderArrivalDeliveryDate: "2026-06-26T00:00:00.000Z",
+//             orderHeaderDeliveryDateTime: "2026-06-26T00:04:00.000Z",
+//             orderHeaderDepatrialDateTime: "2026-06-28T00:00:00.000Z",
+//             orderHeaderPaxnum: 0,
+//             orderHeaderCrewNum: 0,
+//             orderHeaderStationID: values.station,
+//             orderHeaderPriceListId: values.priceList,
+//             orderHeaderAcregId: values.registration,
+//             orderHeaderInvoiceToId: values.invoiceTo,
+//             orderHeaderPaymentMethodId: values.paymentMethod,
+//             orderHeaderPaymentCurrencyId: values.paymentCurrency,
+//             orderHeaderActypeId: values.aircraftType,
+//             orderHeaderFlightNumberId: values.flightNumber,
+//             orderHeaderOrderdByID: null,
+//             orderHeaderTransportationPercent: 0.05,
+//             orderHeaderHasTransportaion: true,
+//             orderHeaderAddPercent: 0,
+//             orderHeaderDiscountPercent: 0,
+//             orderHeaderHasAirportFees: false,
+//             orderHeaderBelongToId: null,
+//             orderHeaderHasRamTransportation: false,
+//             orderHeaderHasHightLoader: false,
+//             orderHeaderApplyMinmumFees: true,
+//             orderHeaderCurrencyId: 2
+//          }
+
+
+//          createOrderByClientMutation.mutate(orderHeaderPayload, {
+//             onSuccess: () => {
+//                toast.success("Order created successfully");
+//                onClose();
+//                actions.resetForm();
+//                setStep(0);
+//             }
+//             , onError: (error) => {
+//                toast.error(error.message);
+//                // onClose();
+//                // actions.resetForm();
+//                // setStep(0);
+//             },
+//             onMutate: () => {
+//                toast.loading("Creating Order...", {
+//                   id: "creatingOrder",
+//                })
+//             },
+//             onSettled: () => {
+//                toast.dismiss("creatingOrder");
+//             }
+//          });
+//          // Optionally reset form and step if opening again requires clean state
+//          // setStep(0);
+//          // actions.resetForm();
+//       }
+//    };
+
+//    return (
+//       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+//          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+//             {/* Header */}
+//             <div className="flex justify-between items-center bg-primary text-white p-5">
+//                <h2 className="text-xl font-bold">
+//                   {langText.createNewOrder[lang]}
+//                </h2>
+//                <button
+//                   onClick={onClose}
+//                   className="text-white/80 hover:text-white transition-colors cursor-pointer"
+//                >
+//                   <FaTimes size={20} />
+//                </button>
+//             </div>
+
+//             {/* Stepper Header */}
+//             <div className="flex bg-gray-50 border-b border-gray-100 p-4">
+//                <div
+//                   className={`flex-1 text-center font-semibold text-sm ${step === 0 ? "text-primary" : "text-gray-400"}`}
+//                >
+//                   {langText.orderDetail[lang]}
+//                </div>
+//                <div
+//                   className={`flex-1 text-center font-semibold text-sm ${step === 1 ? "text-primary" : "text-gray-400"}`}
+//                >
+//                   {langText.clientAndPayment[lang]}
+//                </div>
+//                <div
+//                   className={`flex-1 text-center font-semibold text-sm ${step === 2 ? "text-primary" : "text-gray-400"}`}
+//                >
+//                   {langText.dateTime[lang]}
+//                </div>
+//             </div>
+
+//             <div className="p-6 overflow-y-auto max-h-[70vh]">
+//                <Formik
+//                   enableReinitialize={true}
+//                   initialValues={{
+//                      station: stations?.length > 0 ? stations?.find(s => s.stationName === selectedStation)?.stationId : null,
+//                      priceList: stations?.length > 0 ? stations?.find(s => s.stationName === selectedStation)?.stationDefualtPriceHeaderId : null,
+//                      flightNumber: null,
+//                      registration: null,
+//                      aircraftType: null,
+//                      agent: null,
+//                      operator: null,
+//                      billTo: null,
+//                      invoiceTo: null,
+//                      paymentMethod: null,
+//                      paymentCurrency: null,
+//                      arrivalDate: null,
+//                      departureDate: null,
+//                   }}
+//                   validationSchema={currentValidationSchema}
+//                   onSubmit={handleSubmit}
+//                >
+//                   {({
+//                      values,
+//                      errors,
+//                      touched,
+//                      setFieldValue,
+//                      isSubmitting,
+//                      submitForm,
+//                   }) => (
+//                      <Form className="flex flex-col gap-5">
+//                         {step === 0 && (
+//                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.station[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={stations || []}
+//                                     value={values.station}
+//                                     onChange={(val) => {
+//                                        console.log("stations val", val);
+//                                        console.log("stations  values", stations);
+
+//                                        setFieldValue("station", val);
+//                                        // Auto-select price list if default exists
+//                                        const found = stations?.find(
+//                                           (s) => s.stationId === val,
+//                                        );
+//                                        if (found?.stationDefualtPriceHeaderId) {
+//                                           setFieldValue(
+//                                              "priceList",
+//                                              found.stationDefualtPriceHeaderId,
+//                                           );
+//                                        }
+//                                     }}
+//                                     getOptionLabel={(opt) => opt.stationName}
+//                                     getOptionValue={(opt) => opt.stationId}
+//                                     error={touched.station && Boolean(errors.station)}
+//                                  />
+//                                  {touched.station && errors.station && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.station}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               {/* <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.priceList[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={priceLists || []}
+//                                     value={values.priceList}
+//                                     onChange={(val) => setFieldValue("priceList", val)}
+//                                     getOptionLabel={(opt) => opt.priceListHeaderTitle}
+//                                     getOptionValue={(opt) => opt.priceListHeaderId}
+//                                     error={touched.priceList && Boolean(errors.priceList)}
+//                                  />
+//                                  {touched.priceList && errors.priceList && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.priceList}
+//                                     </div>
+//                                  )}
+//                               </div> */}
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.flightNumber[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={flightNumbers || []}
+//                                     value={values.flightNumber}
+//                                     onChange={(val) => setFieldValue("flightNumber", val)}
+//                                     getOptionLabel={(opt) => opt.flightNumberName}
+//                                     getOptionValue={(opt) => opt.flightNumberId}
+//                                     error={
+//                                        touched.flightNumber && Boolean(errors.flightNumber)
+//                                     }
+//                                  />
+//                                  {touched.flightNumber && errors.flightNumber && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.flightNumber}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.registration[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={registrations || []}
+//                                     value={values.registration}
+//                                     onChange={(val) => setFieldValue("registration", val)}
+//                                     getOptionLabel={(opt) => opt.registrationName}
+//                                     getOptionValue={(opt) => opt.registrationId}
+//                                     error={
+//                                        touched.registration && Boolean(errors.registration)
+//                                     }
+//                                  />
+//                                  {touched.registration && errors.registration && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.registration}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.aircraftType[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={airCrafts || []}
+//                                     value={values.aircraftType}
+//                                     onChange={(val) => setFieldValue("aircraftType", val)}
+//                                     getOptionLabel={(opt) => opt.actypeName}
+//                                     getOptionValue={(opt) => opt.actypeId}
+//                                     error={
+//                                        touched.aircraftType && Boolean(errors.aircraftType)
+//                                     }
+//                                  />
+//                                  {touched.aircraftType && errors.aircraftType && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.aircraftType}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                            </div>
+//                         )}
+
+//                         {step === 1 && (
+//                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.agent[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={agents || []}
+//                                     value={values.agent}
+//                                     onChange={(val) => setFieldValue("agent", val)}
+//                                     getOptionLabel={(opt) => opt.agentName}
+//                                     getOptionValue={(opt) => opt.agentId}
+//                                     error={touched.agent && Boolean(errors.agent)}
+//                                  />
+//                                  {touched.agent && errors.agent && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.agent}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.operator[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={operators || []}
+//                                     value={values.operator}
+//                                     onChange={(val) => setFieldValue("operator", val)}
+//                                     getOptionLabel={(opt) => opt.operatorName}
+//                                     getOptionValue={(opt) => opt.operatorId}
+//                                     error={touched.operator && Boolean(errors.operator)}
+//                                  />
+//                                  {touched.operator && errors.operator && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.operator}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.billTo[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={billTo || []}
+//                                     value={values.billTo}
+//                                     onChange={(val) => setFieldValue("billTo", val)}
+//                                     getOptionLabel={(opt) => opt.billToname}
+//                                     getOptionValue={(opt) => opt.billToid}
+//                                     error={touched.billTo && Boolean(errors.billTo)}
+//                                  />
+//                                  {touched.billTo && errors.billTo && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.billTo}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.invoiceTo[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={invoiceTo || []}
+//                                     value={values.invoiceTo}
+//                                     onChange={(val) => setFieldValue("invoiceTo", val)}
+//                                     getOptionLabel={(opt) => opt.invoicingToName}
+//                                     getOptionValue={(opt) => opt.invoicingToId}
+//                                     error={touched.invoiceTo && Boolean(errors.invoiceTo)}
+//                                  />
+//                                  {touched.invoiceTo && errors.invoiceTo && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.invoiceTo}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.paymentMethod[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={payTypes || []}
+//                                     value={values.paymentMethod}
+//                                     onChange={(val) => setFieldValue("paymentMethod", val)}
+//                                     getOptionLabel={(opt) => opt.cashTransactionTypeName}
+//                                     getOptionValue={(opt) => opt.cashTransactionTypeId}
+//                                     error={
+//                                        touched.paymentMethod &&
+//                                        Boolean(errors.paymentMethod)
+//                                     }
+//                                  />
+//                                  {touched.paymentMethod && errors.paymentMethod && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.paymentMethod}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                               <div className="col-span-1">
+//                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+//                                     {langText.currency[lang]} *
+//                                  </label>
+//                                  <CustomLookup
+//                                     options={currencyList?.filter(c => c.currencyName == 'USD') || []}
+//                                     value={values.paymentCurrency}
+//                                     onChange={(val) =>
+//                                        setFieldValue("paymentCurrency", val)
+//                                     }
+//                                     getOptionLabel={(opt) => opt.currencyName}
+//                                     getOptionValue={(opt) => opt.currencyId}
+//                                     error={
+//                                        touched.paymentCurrency &&
+//                                        Boolean(errors.paymentCurrency)
+//                                     }
+//                                  />
+//                                  {touched.paymentCurrency && errors.paymentCurrency && (
+//                                     <div className="text-red-500 text-xs mt-1">
+//                                        {errors.paymentCurrency}
+//                                     </div>
+//                                  )}
+//                               </div>
+//                            </div>
+//                         )}
+
+//                         {step === 2 && (
+//                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+//                               <div className="flex flex-col gap-6">
+//                                  {/* Arrival */}
+//                                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+//                                     <h3 className="text-sm font-semibold text-gray-800 mb-3">
+//                                        {langText.arrivalDateTime[lang]} *
+//                                     </h3>
+//                                     <div className="flex gap-4">
+//                                        <div className="flex-1">
+//                                           <DatePicker
+//                                              format="DD/MM/YYYY"
+//                                              value={values.arrivalDate}
+//                                              onChange={(newDate) => {
+//                                                 if (!newDate?.isValid()) return;
+//                                                 const updated = values.arrivalDate
+//                                                    ? values.arrivalDate
+//                                                       .set("year", newDate.year())
+//                                                       .set("month", newDate.month())
+//                                                       .set("date", newDate.date())
+//                                                    : newDate;
+//                                                 setFieldValue("arrivalDate", updated);
+//                                              }}
+//                                              slotProps={{
+//                                                 textField: {
+//                                                    size: "small",
+//                                                    fullWidth: true,
+//                                                    error:
+//                                                       touched.arrivalDate &&
+//                                                       Boolean(errors.arrivalDate),
+//                                                    sx: {
+//                                                       backgroundColor: "white",
+//                                                       borderRadius: "8px",
+//                                                       "& .MuiOutlinedInput-root": {
+//                                                          fontSize: "14px",
+//                                                       },
+//                                                    },
+//                                                 },
+//                                              }}
+//                                           />
+//                                        </div>
+//                                        <div className="flex-1">
+//                                           <TimePicker
+//                                              ampm={false}
+//                                              format="HH:mm"
+//                                              value={values.arrivalDate}
+//                                              onChange={(newTime) => {
+//                                                 if (!newTime?.isValid()) return;
+//                                                 const updated = values.arrivalDate
+//                                                    ? values.arrivalDate
+//                                                       .set("hour", newTime.hour())
+//                                                       .set("minute", newTime.minute())
+//                                                    : dayjs()
+//                                                       .set("hour", newTime.hour())
+//                                                       .set("minute", newTime.minute());
+//                                                 setFieldValue("arrivalDate", updated);
+//                                              }}
+//                                              slotProps={{
+//                                                 textField: {
+//                                                    size: "small",
+//                                                    fullWidth: true,
+//                                                    error:
+//                                                       touched.arrivalDate &&
+//                                                       Boolean(errors.arrivalDate),
+//                                                    sx: {
+//                                                       backgroundColor: "white",
+//                                                       borderRadius: "8px",
+//                                                       "& .MuiOutlinedInput-root": {
+//                                                          fontSize: "14px",
+//                                                       },
+//                                                    },
+//                                                 },
+//                                              }}
+//                                           />
+//                                        </div>
+//                                     </div>
+//                                     {touched.arrivalDate && errors.arrivalDate && (
+//                                        <div className="text-red-500 text-xs mt-1">
+//                                           {errors.arrivalDate}
+//                                        </div>
+//                                     )}
+//                                  </div>
+
+//                                  {/* Departure */}
+//                                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+//                                     <h3 className="text-sm font-semibold text-gray-800 mb-3">
+//                                        {langText.departureDateTime[lang]} *
+//                                     </h3>
+//                                     <div className="flex gap-4">
+//                                        <div className="flex-1">
+//                                           <DatePicker
+//                                              format="DD/MM/YYYY"
+//                                              value={values.departureDate}
+//                                              onChange={(newDate) => {
+//                                                 if (!newDate?.isValid()) return;
+//                                                 const updated = values.departureDate
+//                                                    ? values.departureDate
+//                                                       .set("year", newDate.year())
+//                                                       .set("month", newDate.month())
+//                                                       .set("date", newDate.date())
+//                                                    : newDate;
+//                                                 setFieldValue("departureDate", updated);
+//                                              }}
+//                                              slotProps={{
+//                                                 textField: {
+//                                                    size: "small",
+//                                                    fullWidth: true,
+//                                                    error:
+//                                                       touched.departureDate &&
+//                                                       Boolean(errors.departureDate),
+//                                                    sx: {
+//                                                       backgroundColor: "white",
+//                                                       borderRadius: "8px",
+//                                                       "& .MuiOutlinedInput-root": {
+//                                                          fontSize: "14px",
+//                                                       },
+//                                                    },
+//                                                 },
+//                                              }}
+//                                           />
+//                                        </div>
+//                                        <div className="flex-1">
+//                                           <TimePicker
+//                                              ampm={false}
+//                                              format="HH:mm"
+//                                              value={values.departureDate}
+//                                              onChange={(newTime) => {
+//                                                 if (!newTime?.isValid()) return;
+//                                                 const updated = values.departureDate
+//                                                    ? values.departureDate
+//                                                       .set("hour", newTime.hour())
+//                                                       .set("minute", newTime.minute())
+//                                                    : dayjs()
+//                                                       .set("hour", newTime.hour())
+//                                                       .set("minute", newTime.minute());
+//                                                 setFieldValue("departureDate", updated);
+//                                              }}
+//                                              slotProps={{
+//                                                 textField: {
+//                                                    size: "small",
+//                                                    fullWidth: true,
+//                                                    error:
+//                                                       touched.departureDate &&
+//                                                       Boolean(errors.departureDate),
+//                                                    sx: {
+//                                                       backgroundColor: "white",
+//                                                       borderRadius: "8px",
+//                                                       "& .MuiOutlinedInput-root": {
+//                                                          fontSize: "14px",
+//                                                       },
+//                                                    },
+//                                                 },
+//                                              }}
+//                                           />
+//                                        </div>
+//                                     </div>
+//                                     {touched.departureDate && errors.departureDate && (
+//                                        <div className="text-red-500 text-xs mt-1">
+//                                           {errors.departureDate}
+//                                        </div>
+//                                     )}
+//                                  </div>
+//                               </div>
+//                            </LocalizationProvider>
+//                         )}
+
+//                         {/* Footer Actions */}
+//                         <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
+//                            {step > 0 ? (
+//                               <button
+//                                  type="button"
+//                                  onClick={() => setStep(step - 1)}
+//                                  className="px-5 py-2.5 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors flex items-center gap-2 cursor-pointer"
+//                               >
+//                                  <FaArrowLeft /> {langText.back[lang]}
+//                               </button>
+//                            ) : (
+//                               <div></div>
+//                            )}
+
+//                            <button
+//                               type="button"
+//                               onClick={() => submitForm()}
+//                               disabled={isSubmitting}
+//                               className="px-6 py-2.5 rounded-xl font-medium text-white bg-primary hover:bg-primary/90 transition-colors flex items-center gap-2 cursor-pointer"
+//                            >
+//                               {step === 2 ? (
+//                                  <>
+//                                     <FaCheck /> {langText.finish[lang]}
+//                                  </>
+//                               ) : (
+//                                  <>
+//                                     {langText.next[lang]} <FaArrowRight />
+//                                  </>
+//                               )}
+//                            </button>
+//                         </div>
+//                      </Form>
+//                   )}
+//                </Formik>
+//             </div>
+//          </div>
+//       </div>
+//    );
+// }
+
+
+import React, { useEffect, useRef, useState } from 'react';
+import { Formik, Form } from 'formik';
+import * as Yup from 'yup';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import { FaTimes, FaArrowRight, FaArrowLeft, FaCheck, FaUniversity } from 'react-icons/fa';
+import { DatePicker, TimePicker } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { GetPayTypes } from "../assets/apis/PurchasingAPI";
+import CustomLookup from './HelperComponents/CustomLookup';
+
+const FormObserver = ({ values, setBankSelected, touched, setTouched }) => {
+   const prevValues = useRef(values);
+
+   useEffect(() => {
+      setBankSelected(values.paymentMethod === 3);
+   }, [values.paymentMethod, setBankSelected]);
+
+   useEffect(() => {
+      const keys = Object.keys(values);
+      let changed = false;
+      const newTouched = { ...touched };
+      
+      for (const key of keys) {
+         if (values[key] !== prevValues.current[key]) {
+            if (!newTouched[key]) {
+               newTouched[key] = true;
+               changed = true;
+            }
+         }
+      }
+      
+      if (changed && setTouched) {
+         setTouched(newTouched, false);
+      }
+      prevValues.current = values;
+   }, [values, touched, setTouched]);
+
+   return null;
+};
+
+import {
+   Box,
+   ClickAwayListener,
+   IconButton,
+   InputAdornment,
+   MenuItem,
+   MenuList,
+   Paper,
+   Popper,
+   TextField,
+} from "@mui/material";
+
+const FreeTextLookup = ({
+   label,
+   options = [],
+   valueId,
+   valueName,
+   onChange,
+   getOptionLabel = (option) => option?.label || "",
+   getOptionValue = (option) => option?.id,
+   error,
+   placeholder,
+   disabled = false,
+}) => {
+   const [inputValue, setInputValue] = useState("");
+   const [isOpen, setIsOpen] = useState(false);
+   const [isTyping, setIsTyping] = useState(false);
+   const containerRef = React.useRef(null);
+
+   useEffect(() => {
+      setInputValue(valueName || "");
+      setIsTyping(false);
+   }, [valueName]);
+
+   const filteredOptions = React.useMemo(() => {
+      if (!isTyping) return options;
+
+      const input = inputValue.trim().toLowerCase();
+      if (!input) return options;
+
+      return options
+         .filter((opt) => getOptionLabel(opt).toLowerCase().includes(input))
+         .sort((a, b) => {
+            const aLabel = getOptionLabel(a).toLowerCase();
+            const bLabel = getOptionLabel(b).toLowerCase();
+
+            const aStarts = aLabel.startsWith(input);
+            const bStarts = bLabel.startsWith(input);
+
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+
+            return aLabel.localeCompare(bLabel);
+         });
+   }, [options, inputValue, getOptionLabel, isTyping]);
+
+   const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setInputValue(newValue);
+      setIsTyping(true);
+      if (!newValue) {
+         onChange(null, "");
+      } else {
+         const matchedOption = options.find(
+            (opt) => getOptionLabel(opt).toLowerCase() === newValue.trim().toLowerCase()
+         );
+         if (matchedOption) {
+            onChange(getOptionValue(matchedOption), getOptionLabel(matchedOption));
+         } else {
+            onChange(0, newValue);
+         }
+      }
+      setIsOpen(true);
+   };
+
+   const handleSelect = (option) => {
+      onChange(getOptionValue(option), getOptionLabel(option));
+      setInputValue(getOptionLabel(option));
+      setIsTyping(false);
+      setIsOpen(false);
+   };
+
+   const handleClear = (e) => {
+      e.stopPropagation();
+      setInputValue("");
+      setIsTyping(false);
+      onChange(null, "");
+      setIsOpen(false);
+   };
+   return (
+      <ClickAwayListener onClickAway={() => setIsOpen(false)}>
+         <div ref={containerRef} style={{ width: "100%" }}>
+            <TextField
+               label={label}
+               value={inputValue}
+               onChange={handleInputChange}
+               onFocus={(e) => {
+                  if (!disabled) {
+                     setIsOpen(true);
+                     e.target.select();
+                  }
+               }}
+               size="small"
+               error={error}
+               disabled={disabled}
+               placeholder={placeholder}
+               fullWidth
+               autoComplete="new-password"
+               sx={{
+                  "& .MuiOutlinedInput-root": {
+                     borderRadius: "24px",
+                     backgroundColor: "var(--color-bg-box)",
+                     height: "30px",
+                     fontSize: "12px",
+                     paddingRight: inputValue ? "4px" : undefined,
+                  },
+                  "& .MuiInputBase-input": {
+                     color: "var(--color-primary) !important",
+                     padding: "0 12px",
+                  },
+                  "& .MuiInputLabel-root": {
+                     fontSize: "12px",
+                     lineHeight: "14px",
+                     transform: "translate(14px, 8px) scale(1)",
+                     "&.Mui-focused, &.MuiInputLabel-shrink": {
+                        transform: "translate(14px, -12px) scale(0.75)",
+                     },
+                  },
+               }}
+               slotProps={{
+                  input: {
+                     endAdornment: inputValue ? (
+                        <InputAdornment position="end">
+                           <IconButton
+                              size="small"
+                              onClick={handleClear}
+                              tabIndex={-1}
+                              sx={{
+                                 padding: "5px",
+                                 color: "var(--color-primary)",
+                              }}
+                           >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                 <line x1="18" y1="6" x2="6" y2="18" />
+                                 <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                           </IconButton>
+                        </InputAdornment>
+                     ) : null,
+                  },
+               }}
+            />
+            <Popper
+               open={isOpen}
+               anchorEl={containerRef.current}
+               placement="bottom-start"
+               style={{
+                  zIndex: 20000000,
+                  width: containerRef.current?.offsetWidth,
+               }}
+               modifiers={[
+                  {
+                     name: "flip",
+                     enabled: true,
+                     options: {
+                        fallbackPlacements: ["top"],
+                     },
+                  },
+                  {
+                     name: "preventOverflow",
+                     enabled: true,
+                     options: {
+                        boundary: "viewport",
+                     },
+                  },
+               ]}
+            >
+               <Paper
+                  className="popup-component"
+                  elevation={3}
+                  sx={{
+                     mt: 0.5,
+                     width: "100%",
+                     height: "100%",
+                     maxHeight: 300,
+                     overflow: "hidden",
+                     display: "flex",
+                     flexDirection: "column",
+                  }}
+               >
+                  <MenuList dense sx={{ overflowY: "auto", flex: 1, p: 0 }}>
+                     {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
+                           <MenuItem
+                              key={getOptionValue(option)}
+                              onClick={() => handleSelect(option)}
+                              sx={{ fontSize: "12px" }}
+                           >
+                              {getOptionLabel(option)}
+                           </MenuItem>
+                        ))
+                     ) : (
+                        <Box
+                           sx={{
+                              p: 2,
+                              fontSize: "12px",
+                              color: "text.secondary",
+                              textAlign: "center",
+                           }}
+                        >
+                           No options
+                        </Box>
+                     )}
+                  </MenuList>
+               </Paper>
+            </Popper>
+         </div>
+      </ClickAwayListener>
+   );
+};
+
+
+import {
+   GetHeaderPriceList,
+   GetFlightNumbersList,
+   GetRegisterationList,
+   GetAirCraftList,
+   GetAgentsList,
+   GetOperatorsList,
+   GetBillToList,
+   GetInvoiceToList,
+} from '../assets/apis/SalesAPI';
+
+import { CurrencyListSales } from '../assets/apis/FinanceApi';
+import { GetStationsList } from '../assets/apis/PurchasingAPI';
+import { useLangStore } from '../assets/store/langStore';
+import { langText } from '../assets/constants/lang';
+import useProductMutation from '../assets/apis/product/ProductMutation';
+import toast from 'react-hot-toast';
+import { useStationStore } from '../assets/store/stationStore';
+import { useCartStore } from '../assets/store/cartStore';
+import { onlineOrderToast } from '../assets/Helpers/onlineOrderToast';
+import { getMyAgent, getMyAirCrafts, getMyBillTo, getMyFlightNumbers, getMyOperators, getMyRegistrations, GetCustomerProfileSettings, UpdateCustomerProfileSettings, SaveOrderAgainAirCatering } from '../assets/apis/order/OrderApi';
+import { useNavigate } from 'react-router-dom';
+
+export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null }) {
+   const navigate = useNavigate();
+   const [step, setStep] = useState(0);
+   const [isBankSelected, setIsBankSelected] = useState(false);
+
+   const { lang } = useLangStore();
+
+   const { data: profileSettings } = useQuery({
+      queryKey: ["customerProfileSettings"],
+      queryFn: GetCustomerProfileSettings,
+      enabled: isOpen,
+   });
+
+   const Step1Schema = Yup.object().shape({
+      station: Yup.number().required(langText.stationIsRequired[lang]),
+      priceList: Yup.number().required(langText.priceListIsRequired[lang]),
+      flightNumberName: Yup.string().required(langText.flightNumberIsRequired[lang]),
+      registrationName: profileSettings?.customerDataNotAplicable
+         ? Yup.string()
+         : Yup.string().required(langText.registrationIsRequired[lang]),
+      aircraftTypeName: Yup.string().required(langText.aircraftTypeIsRequired[lang]),
+      orderHeaderPaxnum: Yup.number().min(0, lang === "AR" ? "يجب أن يكون 0 أو أكثر" : "Must be at least 0").required(lang === "AR" ? "عدد الركاب مطلوب" : "Number of Passengers is required"),
+      orderHeaderCrewNum: Yup.number().min(0, lang === "AR" ? "يجب أن يكون 0 أو أكثر" : "Must be at least 0").required(lang === "AR" ? "عدد أفراد الطاقم مطلوب" : "Number of Crew is required"),
+      orderHeaderFlightType: Yup.string().required(lang === "AR" ? "نوع الرحلة مطلوب" : "Flight Type is required"),
+   });
+
+   const Step2Schema = Yup.object().shape({
+      agentName: profileSettings?.agentIsRequired === false
+         ? Yup.string()
+         : Yup.string().required(langText.agentIsRequired[lang]),
+      operatorName: profileSettings?.operatorIsRequired === false
+         ? Yup.string()
+         : Yup.string().required(langText.operatorIsRequired[lang]),
+      billToName: Yup.string().required(langText.billToIsRequired[lang]),
+      invoiceTo: Yup.number().required(langText.invoiceToIsRequired[lang]),
+      paymentMethod: Yup.number().required(langText.paymentMethodIsRequired[lang]),
+      paymentCurrency: Yup.number().required(langText.paymentCurrencyIsRequired[lang]),
+   });
+
+   const Step3Schema = Yup.object().shape({
+      arrivalDate: Yup.mixed()
+         .nullable()
+         .test(
+            'arrival-required',
+            lang === "AR" ? "تاريخ الوصول مطلوب" : "Arrival date is required",
+            function (val) {
+               const { orderHeaderFlightType } = this.parent;
+               if (orderHeaderFlightType === "Arrival" || orderHeaderFlightType === "Both") {
+                  return !!val;
+               }
+               return true;
+            }
+         )
+         .test(
+            'arrival-future',
+            lang === "AR" ? "يجب أن يكون تاريخ الوصول في المستقبل" : "Arrival date must be in the future",
+            function (val) {
+               if (!val || !val.isValid()) return true;
+               return val.isAfter(dayjs());
+            }
+         ),
+      departureDate: Yup.mixed()
+         .nullable()
+         .test(
+            'departure-required',
+            lang === "AR" ? "تاريخ المغادرة مطلوب" : "Departure date is required",
+            function (val) {
+               const { orderHeaderFlightType } = this.parent;
+               if (orderHeaderFlightType === "Departure" || orderHeaderFlightType === "Both") {
+                  return !!val;
+               }
+               return true;
+            }
+         )
+         .test(
+            'departure-future',
+            lang === "AR" ? "يجب أن يكون تاريخ المغادرة في المستقبل" : "Departure date must be in the future",
+            function (val) {
+               if (!val || !val.isValid()) return true;
+               return val.isAfter(dayjs());
+            }
+         )
+         .test(
+            'at-least-one-date',
+            langText.atLeastOneDateRequired?.[lang] || 'Either Arrival or Departure date is required',
+            function (val) {
+               const { orderHeaderFlightType, arrivalDate } = this.parent;
+               if (orderHeaderFlightType === "Both") {
+                  return !!(val || arrivalDate);
+               }
+               return true;
+            }
+         )
+         .test('is-after-arrival', langText.departureMustBeAfterArrival?.[lang] || "Departure must be after arrival", function (val) {
+            const { orderHeaderFlightType, arrivalDate } = this.parent;
+            if (orderHeaderFlightType !== "Both") return true;
+            if (!val || !val.isValid() || !arrivalDate || !arrivalDate.isValid()) return true;
+            return val.isAfter(arrivalDate);
+         }),
+   });
+
+   const Step4Schema = Yup.object().shape({
+      arrivalDeliveryDate: Yup.mixed()
+         .nullable()
+         .test(
+            'depends-on-arrival',
+            langText.arrivalReqForDelivery?.[lang] || 'Cannot add delivery date without arrival date',
+            function (val) {
+               const { orderHeaderFlightType, arrivalDate } = this.parent;
+               if (orderHeaderFlightType === "Departure") return true;
+               if (val && !arrivalDate) return false;
+               return true;
+            }
+         )
+         .test(
+            'after-arrival',
+            lang === 'AR' ? 'تاريخ توصيل الوصول يجب أن يكون بعد تاريخ الوصول' : 'Arrival Delivery must be after Arrival Date',
+            function (val) {
+               const { orderHeaderFlightType, arrivalDate } = this.parent;
+               if (orderHeaderFlightType === "Departure") return true;
+               if (!val || !val.isValid() || !arrivalDate || !arrivalDate.isValid()) return true;
+               return val.isAfter(arrivalDate);
+            }
+         )
+         .test(
+            'future-date',
+            lang === 'AR' ? 'يجب أن يكون في المستقبل' : 'Must be in the future',
+            function (val) {
+               if (!val || !val.isValid()) return true;
+               return val.isAfter(dayjs());
+            }
+         ),
+      departureDeliveryDate: Yup.mixed()
+         .nullable()
+         .test(
+            'depends-on-departure',
+            langText.departureReqForDelivery?.[lang] || 'Cannot add delivery date without departure date',
+            function (val) {
+               const { orderHeaderFlightType, departureDate } = this.parent;
+               if (orderHeaderFlightType === "Arrival") return true;
+               if (val && !departureDate) return false;
+               return true;
+            }
+         )
+         .test(
+            'after-arrival-delivery',
+            lang === 'AR' ? 'يجب أن يكون بعد تاريخ توصيل الوصول' : 'Must be after Arrival Delivery Date',
+            function (val) {
+               const { orderHeaderFlightType, arrivalDeliveryDate } = this.parent;
+               if (orderHeaderFlightType !== "Both") return true;
+               if (!val || !val.isValid() || !arrivalDeliveryDate || !arrivalDeliveryDate.isValid()) return true;
+               return val.isAfter(arrivalDeliveryDate);
+            }
+         )
+         .test(
+            'before-departure',
+            lang === 'AR' ? 'تاريخ توصيل المغادرة يجب أن يكون قبل تاريخ المغادرة' : 'Departure Delivery must be before Departure Date',
+            function (val) {
+               const { orderHeaderFlightType, departureDate } = this.parent;
+               if (orderHeaderFlightType === "Arrival") return true;
+               if (!val || !val.isValid() || !departureDate || !departureDate.isValid()) return true;
+               return val.isBefore(departureDate);
+            }
+         )
+         .test(
+            'future-date',
+            lang === 'AR' ? 'يجب أن يكون في المستقبل' : 'Must be in the future',
+            function (val) {
+               if (!val || !val.isValid()) return true;
+               return val.isAfter(dayjs());
+            }
+         )
+   });
+
+   const Step5Schema = Yup.object().shape({
+      paymentInfoAccountBankName: Yup.string().required(lang === "AR" ? "اسم البنك مطلوب" : "Bank name is required"),
+      paymentInfoAccountNumber: Yup.string().required(lang === "AR" ? "رقم الحساب مطلوب" : "Account number is required"),
+      paymentInfoIBan: Yup.string().required(lang === "AR" ? "الآيبان مطلوب" : "IBAN is required"),
+      paymentInfoSwiftCode: Yup.string().required(lang === "AR" ? "رمز سويفت مطلوب" : "Swift code is required"),
+   });
+
+   const { createOrderByClientMutation } = useProductMutation();
+   const { setSelectedOrder } = useCartStore();
+   const queryClient = useQueryClient();
+
+   const orderAgainMutation = useMutation({
+      mutationFn: SaveOrderAgainAirCatering,
+   });
+
+   const validationSchemas = isBankSelected
+      ? [Step1Schema, Step2Schema, Step5Schema, Step3Schema, Step4Schema]
+      : [Step1Schema, Step2Schema, Step3Schema, Step4Schema];
+   const { data: stations } = useQuery({ queryKey: ["stations"], queryFn: GetStationsList, enabled: isOpen });
+   const { data: priceLists } = useQuery({ queryKey: ["priceLists"], queryFn: GetHeaderPriceList, enabled: isOpen });
+   const { data: flightNumbers } = useQuery({ queryKey: ["flightNumbers"], queryFn: getMyFlightNumbers, enabled: isOpen });
+   const { data: registrations } = useQuery({ queryKey: ["registrations"], queryFn: getMyRegistrations, enabled: isOpen });
+   const { data: airCrafts } = useQuery({ queryKey: ["airCrafts"], queryFn: getMyAirCrafts, enabled: isOpen });
+   const { data: agents } = useQuery({ queryKey: ["agents"], queryFn: getMyAgent, enabled: isOpen });
+   const { data: operators } = useQuery({ queryKey: ["operators"], queryFn: getMyOperators, enabled: isOpen });
+   const { data: billTo } = useQuery({ queryKey: ["billTo"], queryFn: getMyBillTo, enabled: isOpen });
+   const { data: invoiceTo } = useQuery({ queryKey: ["invoiceTo"], queryFn: GetInvoiceToList, enabled: isOpen });
+   const { data: payTypes } = useQuery({ queryKey: ["payTypes"], queryFn: GetPayTypes, enabled: isOpen });
+   const { data: currencyList } = useQuery({ queryKey: ["currencyListSales"], queryFn: CurrencyListSales, enabled: isOpen });
+   const { selectedStation } = useStationStore();
+
+   const originalProfileSettings = useRef(null);
+
+   const updateProfileSettingsMutation = useMutation({
+      mutationFn: UpdateCustomerProfileSettings,
+   });
+
+   useEffect(() => {
+      if (!isOpen) {
+         originalProfileSettings.current = null;
+      } else {
+         setStep(0);
+         setIsBankSelected(false);
+      }
+   }, [isOpen]);
+
+   useEffect(() => {
+      if (isOpen && profileSettings && !originalProfileSettings.current) {
+         originalProfileSettings.current = { ...profileSettings };
+      }
+   }, [isOpen, profileSettings]);
+
+   if (!isOpen) return null;
+
+   const currentValidationSchema = validationSchemas[step];
+
+   const handleSubmit = (values, actions) => {
+      const maxSteps = isBankSelected ? 4 : 3;
+
+      if (step < maxSteps) {
+         setStep(step + 1);
+         actions.setTouched({});
+         actions.setSubmitting(false);
+      } else {
+         const orderHeaderPayload = {
+            orderHeaderId: 0,
+            orderHeaderCutomerId: 0,
+            orderHeaderBillToID: values.billTo || 0,
+            orderHeaderBillToName: values.billToName || "",
+            orderHeaderOperatorID: values.operator || 0,
+            orderHeaderOperatorName: values.operatorName || "",
+            orderHeaderAgentId: values.agent || 0,
+            orderHeaderAgentName: values.agentName || "",
+
+            orderHeaderFlightArrivalDatTime: (values.orderHeaderFlightType !== "Departure" && values.arrivalDate) ? values.arrivalDate.format('YYYY-MM-DDTHH:mm:ss') : null,
+            orderHeaderArrivalDeliveryDate: (values.orderHeaderFlightType !== "Departure" && values.arrivalDeliveryDate) ? values.arrivalDeliveryDate.format('YYYY-MM-DDTHH:mm:ss') : null,
+            orderHeaderDepatrialDateTime: (values.orderHeaderFlightType !== "Arrival" && values.departureDate) ? values.departureDate.format('YYYY-MM-DDTHH:mm:ss') : null,
+            orderHeaderDeliveryDateTime: (values.orderHeaderFlightType !== "Arrival" && values.departureDeliveryDate) ? values.departureDeliveryDate.format('YYYY-MM-DDTHH:mm:ss') : null,
+
+            orderHeaderPaxnum: values.orderHeaderFlightType !== "Arrival" ? values.orderHeaderPaxnum : 0,
+            orderHeaderCrewNum: values.orderHeaderFlightType !== "Arrival" ? values.orderHeaderCrewNum : 0,
+            orderHeaderArrivalPaxnum: values.orderHeaderFlightType !== "Departure" ? values.orderHeaderArrivalPaxnum : 0,
+            orderHeaderArrivalCrewNum: values.orderHeaderFlightType !== "Departure" ? values.orderHeaderArrivalCrewNum : 0,
+            orderHeaderFlightType: values.orderHeaderFlightType,
+            orderHeaderStationID: values.station,
+            orderHeaderPriceListId: values.priceList,
+            orderHeaderAcregId: values.registration || 0,
+            orderHeaderAcregName: values.registrationName || "",
+            orderHeaderInvoiceToId: values.invoiceTo,
+            orderHeaderPaymentMethodId: values.paymentMethod,
+            orderHeaderPaymentCurrencyId: values.paymentCurrency,
+            orderHeaderActypeId: values.aircraftType || 0,
+            orderHeaderActypeName: values.aircraftTypeName || "",
+            orderHeaderFlightNumberId: values.flightNumber || 0,
+            orderHeaderFlightNumberName: values.flightNumberName || "",
+            orderHeaderOrderdByID: null,
+            orderHeaderTransportationPercent: 0.05,
+            orderHeaderHasTransportaion: true,
+            orderHeaderAddPercent: 0,
+            orderHeaderDiscountPercent: 0,
+            orderHeaderHasAirportFees: false,
+            orderHeaderBelongToId: null,
+            orderHeaderHasRamTransportation: false,
+            orderHeaderHasHightLoader: false,
+            orderHeaderApplyMinmumFees: true,
+            orderHeaderCurrencyId: 2,
+
+            paymentInfoAccountBankName: values.paymentInfoAccountBankName || "",
+            paymentInfoAccountNumber: values.paymentInfoAccountNumber || "",
+            paymentInfoIBan: values.paymentInfoIBan || "",
+            paymentInfoSwiftCode: values.paymentInfoSwiftCode || ""
+         };
+
+         const handleSuccess = (response) => {
+            onlineOrderToast.success(lang == "EN" ? "Order created successfully" : "تم إنشاء الطلب بنجاح", { id: "creatingOrder" });
+
+            const newOrderData = response?.data?.[0]?.header || response?.[0]?.header;
+            if (newOrderData) {
+               setSelectedOrder(newOrderData);
+            }
+
+            queryClient.invalidateQueries({ queryKey: ["myOrders"] });
+
+            const original = originalProfileSettings.current;
+            if (original) {
+               const updatedSettings = { ...original };
+               let hasUpdates = false;
+
+               if (original.flightId == null && values.flightNumber) {
+                  updatedSettings.flightId = values.flightNumber;
+                  hasUpdates = true;
+               }
+               if (original.registrationId == null && values.registration) {
+                  updatedSettings.registrationId = values.registration;
+                  hasUpdates = true;
+               }
+               if (original.airCraftId == null && values.aircraftType) {
+                  updatedSettings.airCraftId = values.aircraftType;
+                  hasUpdates = true;
+               }
+               if (original.paymentMethodId == null && values.paymentMethod) {
+                  updatedSettings.paymentMethodId = values.paymentMethod;
+                  hasUpdates = true;
+               }
+               if (original.agentId == null && values.agent) {
+                  updatedSettings.agentId = values.agent;
+                  hasUpdates = true;
+               }
+               if (original.operatorId == null && values.operator) {
+                  updatedSettings.operatorId = values.operator;
+                  hasUpdates = true;
+               }
+               if (original.billToId == null && values.billTo) {
+                  updatedSettings.billToId = values.billTo;
+                  hasUpdates = true;
+               }
+
+               if (hasUpdates) {
+                  updateProfileSettingsMutation.mutate(updatedSettings);
+               }
+            }
+
+            onClose();
+            actions.resetForm();
+            setStep(0);
+            actions.setSubmitting(false);
+         };
+
+         const handleError = () => {
+            onlineOrderToast.error(lang == "EN" ? "Failed to create order" : "فشل إنشاء الطلب", { id: "creatingOrder" });
+            actions.setSubmitting(false);
+         };
+
+         onlineOrderToast.loading(lang == "EN" ? "Creating Order..." : "...جاري إنشاء الطلب", { id: "creatingOrder" });
+
+         if (oldOrderId) {
+            orderAgainMutation.mutate(
+               { oldOrderHeaderId: oldOrderId, newHeader: orderHeaderPayload },
+               {
+                  onSuccess: (response) => {
+                     handleSuccess(response);
+                     const newOrderData = response?.data?.[0]?.header || response?.[0]?.header;
+                     if (newOrderData?.orderHeaderId) {
+                        navigate(`/order/${newOrderData.orderHeaderId}`);
+                     }
+                  },
+                  onError: handleError
+               }
+            );
+         } else {
+            createOrderByClientMutation.mutate(orderHeaderPayload, {
+               onSuccess: handleSuccess,
+               onError: handleError,
+            });
+         }
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center bg-primary text-white p-5">
+               <h2 className="text-xl font-bold">
+                  {langText.createNewOrder[lang]}
+               </h2>
+               <button
+                  onClick={onClose}
+                  className="text-white/80 hover:text-white transition-colors cursor-pointer"
+               >
+                  <FaTimes size={20} />
+               </button>
+            </div>
+
+            <div className="flex bg-gray-50 border-b border-gray-100 p-4">
+               <div className={`flex-1 text-center font-semibold text-sm ${step === 0 ? "text-primary" : "text-gray-400"}`}>
+                  1. {langText.orderDetail[lang].replace(/^\d+\.\s*/, '')}
+               </div>
+               <div className={`flex-1 text-center font-semibold text-sm ${step === 1 ? "text-primary" : "text-gray-400"}`}>
+                  2. {langText.clientAndPayment[lang].replace(/^\d+\.\s*/, '')}
+               </div>
+               {isBankSelected && (
+                  <div className={`flex-1 text-center font-semibold text-sm ${step === 2 ? "text-primary" : "text-gray-400"}`}>
+                     3. {lang === "EN" ? "Bank Payment" : "الدفع البنكي"}
+                  </div>
+               )}
+               <div className={`flex-1 text-center font-semibold text-sm ${step === (isBankSelected ? 3 : 2) ? "text-primary" : "text-gray-400"}`}>
+                  {isBankSelected ? 4 : 3}. {langText.dateTime[lang].replace(/^\d+\.\s*/, '')}
+               </div>
+               <div className={`flex-1 text-center font-semibold text-sm ${step === (isBankSelected ? 4 : 3) ? "text-primary" : "text-gray-400"}`}>
+                  {isBankSelected ? 5 : 4}. {langText.deliveryDates?.[lang] || (lang === "EN" ? "Delivery" : "التوصيل")}
+               </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+               <Formik
+                  enableReinitialize={true}
+                  initialValues={{
+                     station:
+                        stations?.length > 0
+                           ? stations?.find((s) => s.stationName === selectedStation?.stationName)
+                              ?.stationId
+                           : null,
+                     priceList:
+                        stations?.length > 0
+                           ? stations?.find((s) => s.stationName === selectedStation?.stationName)
+                              ?.stationDefualtPriceHeaderId
+                           : null,
+                     flightNumber: profileSettings?.flightId ?? null,
+                     flightNumberName: profileSettings?.flightName ?? "",
+                     registration: profileSettings?.registrationId ?? null,
+                     registrationName: profileSettings?.registrationName ?? "",
+                     aircraftType: profileSettings?.airCraftId ?? null,
+                     aircraftTypeName: profileSettings?.airCraftTypeName ?? "",
+                     agent: profileSettings?.agentId ?? null,
+                     agentName: profileSettings?.agentName ?? "",
+                     operator: profileSettings?.operatorId ?? null,
+                     operatorName: profileSettings?.operatorName ?? "",
+                     billTo: profileSettings?.billToId ?? null,
+                     billToName: profileSettings?.billToName ?? "",
+                     invoiceTo: null,
+                     paymentMethod: profileSettings?.paymentMethodId ?? null,
+                     paymentCurrency: null,
+                     arrivalDate: null,
+                     departureDate: null,
+                     arrivalDeliveryDate: null,
+                     departureDeliveryDate: null,
+                     isStationHasVisa: false,
+                     orderHeaderPaxnum: 0,
+                     orderHeaderCrewNum: 0,
+                     orderHeaderArrivalPaxnum: 0,
+                     orderHeaderArrivalCrewNum: 0,
+                     orderHeaderFlightType: "Both",
+                     paymentInfoAccountBankName: profileSettings?.paymentInfoAccountBankName || "",
+                     paymentInfoAccountNumber: profileSettings?.paymentInfoAccountNumber || "",
+                     paymentInfoIBan: profileSettings?.paymentInfoIBan || "",
+                     paymentInfoSwiftCode: profileSettings?.paymentInfoSwiftCode || "",
+                  }}
+                  validationSchema={currentValidationSchema}
+                  onSubmit={handleSubmit}
+               >
+                  {({
+                     values,
+                     errors,
+                     touched,
+                     setFieldValue,
+                     setFieldTouched,
+                     setTouched,
+                     isSubmitting,
+                     submitForm,
+                  }) => (
+                     <Form className="flex flex-col h-full relative p-1">
+                        
+
+                        {step === 0 && (
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Station *
+                                 </label>
+                                 <CustomLookup
+                                    options={stations || []}
+                                    value={values.station}
+                                    onChange={(val) => {
+                                       setFieldValue("station", val);
+                                       const found = stations?.find(
+                                          (s) => s.stationId === val,
+                                       );
+                                       setFieldValue("isStationHasVisa", !!found?.hasVisaPayment);
+                                       if (found?.stationDefualtPriceHeaderId) {
+                                          setFieldValue(
+                                             "priceList",
+                                             found.stationDefualtPriceHeaderId,
+                                          );
+                                       }
+                                    }}
+                                    getOptionLabel={(opt) => opt.stationName}
+                                    getOptionValue={(opt) => opt.stationId}
+                                    error={touched.station && Boolean(errors.station)}
+                                 />
+                                 {touched.station && errors.station && (
+                                    <div className="text-red-500 text-xs mt-1">
+                                       {errors.station}
+                                    </div>
+                                 )}
+                              </div>
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {lang === "AR" ? "نوع الرحلة *" : "Flight Type *"}
+                                 </label>
+                                 <div className="relative">
+                                    <select
+                                       value={values.orderHeaderFlightType}
+                                       onChange={(e) => setFieldValue("orderHeaderFlightType", e.target.value)}
+                                       className={`w-full h-[30px] px-3 border rounded-[24px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] border-gray-300 font-medium`}
+                                    >
+                                       <option value="Arrival">{lang === "AR" ? "وصول" : "Arrival"}</option>
+                                       <option value="Departure">{lang === "AR" ? "مغادرة" : "Departure"}</option>
+                                       <option value="Both">{lang === "AR" ? "كلاهما" : "Both"}</option>
+                                    </select>
+                                 </div>
+                                 {touched.orderHeaderFlightType && errors.orderHeaderFlightType && (
+                                    <div className="text-red-500 text-xs mt-1">
+                                       {errors.orderHeaderFlightType}
+                                    </div>
+                                 )}
+                              </div>
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Flight Number *
+                                 </label>
+                                 <FreeTextLookup
+                                    options={flightNumbers || []}
+                                    valueId={values.flightNumber}
+                                    valueName={values.flightNumberName}
+                                    onChange={(id, name) => {
+                                       setFieldValue("flightNumber", id);
+                                       setFieldValue("flightNumberName", name);
+                                    }}
+                                    getOptionLabel={(opt) => opt.flightNumberName}
+                                    getOptionValue={(opt) => opt.flightNumberId}
+                                    error={
+                                       touched.flightNumberName && Boolean(errors.flightNumberName)
+                                    }
+                                 />
+                                 {touched.flightNumberName && errors.flightNumberName && (
+                                    <div className="text-red-500 text-xs mt-1">
+                                       {errors.flightNumberName}
+                                    </div>
+                                 )}
+                              </div>
+                              {!(profileSettings?.customerDataNotAplicable || profileSettings?.CustomerDataNotAplicable) && (
+                                 <div className="col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                       Registration *
+                                    </label>
+                                    <FreeTextLookup
+                                       options={registrations || []}
+                                       valueId={values.registration}
+                                       valueName={values.registrationName}
+                                       onChange={(id, name) => {
+                                          setFieldValue("registration", id);
+                                          setFieldValue("registrationName", name);
+                                       }}
+                                       getOptionLabel={(opt) => opt.registrationName}
+                                       getOptionValue={(opt) => opt.registrationId}
+                                       error={
+                                          touched.registrationName && Boolean(errors.registrationName)
+                                       }
+                                    />
+                                    {touched.registrationName && errors.registrationName && (
+                                       <div className="text-red-500 text-xs mt-1">
+                                          {errors.registrationName}
+                                       </div>
+                                    )}
+                                 </div>
+                              )}
+                              {values.orderHeaderFlightType !== "Departure" && (
+                                 <>
+                                    <div className="col-span-1">
+                                       <label className="block text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد ركاب الوصول *" : "Number of Arrival Passengers *"}</label>
+                                       <TextField
+                                          type="number"
+                                          value={values.orderHeaderArrivalPaxnum}
+                                          onChange={(e) => setFieldValue("orderHeaderArrivalPaxnum", Math.max(0, parseInt(e.target.value) || 0))}
+                                          size="small"
+                                          fullWidth
+                                          error={touched.orderHeaderArrivalPaxnum && Boolean(errors.orderHeaderArrivalPaxnum)}
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "24px", height: "30px", fontSize: "12px" } }}
+                                       />
+                                       {touched.orderHeaderArrivalPaxnum && errors.orderHeaderArrivalPaxnum && (
+                                          <div className="text-red-500 text-xs mt-1">
+                                             {errors.orderHeaderArrivalPaxnum}
+                                          </div>
+                                       )}
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="block text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد أفراد طاقم الوصول *" : "Number of Arrival Crew *"}</label>
+                                       <TextField
+                                          type="number"
+                                          value={values.orderHeaderArrivalCrewNum}
+                                          onChange={(e) => setFieldValue("orderHeaderArrivalCrewNum", Math.max(0, parseInt(e.target.value) || 0))}
+                                          size="small"
+                                          fullWidth
+                                          error={touched.orderHeaderArrivalCrewNum && Boolean(errors.orderHeaderArrivalCrewNum)}
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "24px", height: "30px", fontSize: "12px" } }}
+                                       />
+                                       {touched.orderHeaderArrivalCrewNum && errors.orderHeaderArrivalCrewNum && (
+                                          <div className="text-red-500 text-xs mt-1">
+                                             {errors.orderHeaderArrivalCrewNum}
+                                          </div>
+                                       )}
+                                    </div>
+                                 </>
+                              )}
+                              {values.orderHeaderFlightType !== "Arrival" && (
+                                 <>
+                                    <div className="col-span-1">
+                                       <label className="block text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد ركاب المغادرة *" : "Number of Departure Passengers *"}</label>
+                                       <TextField
+                                          type="number"
+                                          value={values.orderHeaderPaxnum}
+                                          onChange={(e) => setFieldValue("orderHeaderPaxnum", Math.max(0, parseInt(e.target.value) || 0))}
+                                          size="small"
+                                          fullWidth
+                                          error={touched.orderHeaderPaxnum && Boolean(errors.orderHeaderPaxnum)}
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "24px", height: "30px", fontSize: "12px" } }}
+                                       />
+                                       {touched.orderHeaderPaxnum && errors.orderHeaderPaxnum && (
+                                          <div className="text-red-500 text-xs mt-1">
+                                             {errors.orderHeaderPaxnum}
+                                          </div>
+                                       )}
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="block text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد أفراد طاقم المغادرة *" : "Number of Departure Crew *"}</label>
+                                       <TextField
+                                          type="number"
+                                          value={values.orderHeaderCrewNum}
+                                          onChange={(e) => setFieldValue("orderHeaderCrewNum", Math.max(0, parseInt(e.target.value) || 0))}
+                                          size="small"
+                                          fullWidth
+                                          error={touched.orderHeaderCrewNum && Boolean(errors.orderHeaderCrewNum)}
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "24px", height: "30px", fontSize: "12px" } }}
+                                       />
+                                       {touched.orderHeaderCrewNum && errors.orderHeaderCrewNum && (
+                                          <div className="text-red-500 text-xs mt-1">
+                                             {errors.orderHeaderCrewNum}
+                                          </div>
+                                       )}
+                                    </div>
+                                 </>
+                              )}
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">Aircraft Type *</label>
+                                 <FreeTextLookup
+                                    options={airCrafts || []}
+                                    valueId={values.aircraftType}
+                                    valueName={values.aircraftTypeName}
+                                    onChange={(id, name) => {
+                                       setFieldValue("aircraftType", id);
+                                       setFieldValue("aircraftTypeName", name);
+                                    }}
+                                    getOptionLabel={(opt) => opt.airCraftName}
+                                    getOptionValue={(opt) => opt.airCraftId}
+                                    error={touched.aircraftTypeName && Boolean(errors.aircraftTypeName)}
+                                 />
+                                 {touched.aircraftTypeName && errors.aircraftTypeName && (
+                                    <div className="text-red-500 text-xs mt-1">
+                                       {errors.aircraftTypeName}
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                        )}
+
+                        {step === 1 && (
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                              {profileSettings?.agentIsVisible !== false && (
+                                 <div className="col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Agent {profileSettings?.agentIsRequired !== false ? "*" : ""}</label>
+                                    <FreeTextLookup
+                                       options={agents || []}
+                                       valueId={values.agent}
+                                       valueName={values.agentName}
+                                       onChange={(id, name) => {
+                                          setFieldValue("agent", id);
+                                          setFieldValue("agentName", name);
+                                       }}
+                                       getOptionLabel={(opt) => opt.agentName}
+                                       getOptionValue={(opt) => opt.agentId}
+                                       error={touched.agentName && Boolean(errors.agentName)}
+                                    />
+                                    {touched.agentName && errors.agentName && <div className="text-red-500 text-xs mt-1">{errors.agentName}</div>}
+                                 </div>
+                              )}
+                              {profileSettings?.operatorIsVisible !== false && (
+                                 <div className="col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Operator {profileSettings?.operatorIsRequired !== false ? "*" : ""}</label>
+                                    <FreeTextLookup
+                                       options={operators || []}
+                                       valueId={values.operator}
+                                       valueName={values.operatorName}
+                                       onChange={(id, name) => {
+                                          setFieldValue("operator", id);
+                                          setFieldValue("operatorName", name);
+                                       }}
+                                       getOptionLabel={(opt) => opt.operatorName}
+                                       getOptionValue={(opt) => opt.operatorId}
+                                       error={touched.operatorName && Boolean(errors.operatorName)}
+                                    />
+                                    {touched.operatorName && errors.operatorName && <div className="text-red-500 text-xs mt-1">{errors.operatorName}</div>}
+                                 </div>
+                              )}
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">Bill To *</label>
+                                 <FreeTextLookup
+                                    options={billTo || []}
+                                    valueId={values.billTo}
+                                    valueName={values.billToName}
+                                    onChange={(id, name) => {
+                                       setFieldValue("billTo", id);
+                                       setFieldValue("billToName", name);
+                                    }}
+                                    getOptionLabel={(opt) => opt.billToName}
+                                    getOptionValue={(opt) => opt.billToId}
+                                    error={touched.billToName && Boolean(errors.billToName)}
+                                 />
+                                 {touched.billToName && errors.billToName && <div className="text-red-500 text-xs mt-1">{errors.billToName}</div>}
+                              </div>
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">Invoice To *</label>
+                                 <CustomLookup
+                                    options={invoiceTo || []}
+                                    value={values.invoiceTo}
+                                    onChange={(val) => setFieldValue("invoiceTo", val)}
+                                    getOptionLabel={(opt) => opt.invoicingToName}
+                                    getOptionValue={(opt) => opt.invoicingToId}
+                                    error={touched.invoiceTo && Boolean(errors.invoiceTo)}
+                                 />
+                                 {touched.invoiceTo && errors.invoiceTo && <div className="text-red-500 text-xs mt-1">{errors.invoiceTo}</div>}
+                              </div>
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+                                 <CustomLookup
+                                    options={!values?.isStationHasVisa ? payTypes?.filter((payment) => payment?.cashTransactionTypeId != 4) : payTypes || []}
+                                    value={values.paymentMethod}
+                                    onChange={(val) => setFieldValue("paymentMethod", val)}
+                                    getOptionLabel={(opt) => opt.cashTransactionTypeName}
+                                    getOptionValue={(opt) => opt.cashTransactionTypeId}
+                                    error={touched.paymentMethod && Boolean(errors.paymentMethod)}
+                                 />
+                                 {touched.paymentMethod && errors.paymentMethod && <div className="text-red-500 text-xs mt-1">{errors.paymentMethod}</div>}
+                              </div>
+                              <div className="col-span-1">
+                                 <label className="block text-sm font-medium text-gray-700 mb-1">Currency *</label>
+                                 <CustomLookup
+                                    options={currencyList?.filter((c) => c.currencyName === "USD") || []}
+                                    value={values.paymentCurrency}
+                                    onChange={(val) => setFieldValue("paymentCurrency", val)}
+                                    getOptionLabel={(opt) => opt.currencyName}
+                                    getOptionValue={(opt) => opt.currencyId}
+                                    error={touched.paymentCurrency && Boolean(errors.paymentCurrency)}
+                                 />
+                                 {touched.paymentCurrency && errors.paymentCurrency && <div className="text-red-500 text-xs mt-1">{errors.paymentCurrency}</div>}
+                              </div>
+                           </div>
+                        )}
+
+                        {isBankSelected && step === 2 && (
+                           <div className="flex flex-col gap-6">
+                              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-2">
+                                 <h3 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+                                    {lang === "EN" ? "Sky Culinaire Bank Information" : "معلومات حساب سكاي كولينير البنكي"}
+                                 </h3>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {[
+                                       { label: "Account Name", value: "SKY CULINAIRE" },
+                                       { label: "Swift Code", value: "AGRIEGCX" },
+                                       { label: "IBAN", value: "EG610036000100011018180218558" },
+                                       { label: "Account No", value: "11018180218558" }
+                                    ].map((item, idx) => (
+                                       <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 flex items-center justify-between shadow-sm">
+                                          <div>
+                                             <div className="text-[10px] text-gray-400 font-semibold uppercase">{item.label}</div>
+                                             <div className="text-sm font-bold text-gray-800">{item.value}</div>
+                                          </div>
+                                          <button
+                                             type="button"
+                                             onClick={() => {
+                                                navigator.clipboard.writeText(item.value);
+                                                toast.success(lang === "EN" ? "Copied!" : "تم النسخ!");
+                                             }}
+                                             className="text-gray-400 hover:text-primary transition-colors"
+                                             title="Copy"
+                                          >
+                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                             </svg>
+                                          </button>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                 {[
+                                    { name: "paymentInfoAccountBankName", label: lang === "AR" ? "اسم البنك" : "Bank Name" },
+                                    { name: "paymentInfoAccountNumber", label: lang === "AR" ? "رقم الحساب" : "Account Number" },
+                                    { name: "paymentInfoIBan", label: lang === "AR" ? "الآيبان" : "IBAN" },
+                                    { name: "paymentInfoSwiftCode", label: lang === "AR" ? "رمز سويفت" : "Swift Code" }
+                                 ].map((field) => (
+                                    <div className="col-span-1" key={field.name}>
+                                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          {field.label} *
+                                       </label>
+                                       <input
+                                          type="text"
+                                          className={`w-full h-[30px] px-3 border rounded-[24px] focus:outline-none focus:border-primary text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${errors[field.name] && touched[field.name] ? "border-red-500" : "border-gray-300"}`}
+                                          name={field.name}
+                                          value={values[field.name] || ""}
+                                          onChange={(e) => setFieldValue(field.name, e.target.value)}
+                                          onBlur={() => setFieldTouched?.(field.name, true)}
+                                       />
+                                       {errors[field.name] && touched[field.name] && (
+                                          <div className="text-red-500 text-xs mt-1">
+                                             {errors[field.name]}
+                                          </div>
+                                       )}
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+
+                        {/* STEP 4: Main Dates */}
+                        {step === (isBankSelected ? 3 : 2) && (
+                           <LocalizationProvider dateAdapter={AdapterDayjs}>
+                              <div className="flex flex-col gap-6">
+
+                                 {/* Arrival Block */}
+                                 {values.orderHeaderFlightType !== "Departure" && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                       <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                                          {langText.arrivalDateTime[lang]}
+                                       </h3>
+                                       <div className="flex flex-col md:flex-row gap-4">
+                                          <div className="flex-1">
+                                             <DatePicker
+                                                format="DD/MM/YYYY"
+                                                value={values.arrivalDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.arrivalDate
+                                                      ? values.arrivalDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue("arrivalDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error:
+                                                         touched.arrivalDate &&
+                                                         Boolean(errors.arrivalDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                          <div className="flex-1">
+                                             <TimePicker
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.arrivalDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.arrivalDate
+                                                      ? values.arrivalDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue("arrivalDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error:
+                                                         touched.arrivalDate &&
+                                                         Boolean(errors.arrivalDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                       {errors.arrivalDate && touched.arrivalDate && typeof errors.arrivalDate === "string" && (
+                                          <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                             <span className="text-xs font-semibold">{errors.arrivalDate}</span>
+                                          </div>
+                                       )}
+                                    </div>
+                                 )}
+
+                                 {/* Departure Block */}
+                                 {values.orderHeaderFlightType !== "Arrival" && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                       <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                                          {langText.departureDateTime?.[lang] ||
+                                             "Departure Date & Time (UTC)"}
+                                       </h3>
+                                       <div className="flex flex-col md:flex-row gap-4">
+                                          <div className="flex-1">
+                                             <DatePicker
+                                                format="DD/MM/YYYY"
+                                                value={values.departureDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.departureDate
+                                                      ? values.departureDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue("departureDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error:
+                                                         touched.departureDate &&
+                                                         Boolean(errors.departureDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                          <div className="flex-1">
+                                             <TimePicker
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.departureDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.departureDate
+                                                      ? values.departureDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue("departureDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error:
+                                                         touched.departureDate &&
+                                                         Boolean(errors.departureDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                       {errors.departureDate && touched.departureDate && typeof errors.departureDate === "string" && (
+                                          <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                             <span className="text-xs font-semibold">{errors.departureDate}</span>
+                                          </div>
+                                       )}
+                                    </div>
+                                 )}
+                              </div>
+                           </LocalizationProvider>
+                        )}
+
+                        {/* STEP 5: Delivery Dates */}
+                        {step === (isBankSelected ? 4 : 3) && (
+                           <LocalizationProvider dateAdapter={AdapterDayjs}>
+                              <div className="flex flex-col gap-6">
+                                 {/* Arrival Delivery Block (Disabled if no Arrival Date in Step 3) */}
+                                 {values.orderHeaderFlightType !== "Departure" && (
+                                    <div
+                                       className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.arrivalDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
+                                    >
+                                       <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                                          <span>
+                                             {langText.arrivalDeliveryDateTime?.[lang] ||
+                                                "Arrival Delivery Date & Time (UTC)"}
+                                          </span>
+                                          {!values.arrivalDate && (
+                                             <span className="text-xs text-red-500 font-normal">
+                                                Requires Arrival Date
+                                             </span>
+                                          )}
+                                       </h3>
+                                       <div className="flex flex-col md:flex-row gap-4">
+                                          <div className="flex-1">
+                                             <DatePicker
+                                                disabled={!values.arrivalDate}
+                                                format="DD/MM/YYYY"
+                                                value={values.arrivalDeliveryDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.arrivalDeliveryDate
+                                                      ? values.arrivalDeliveryDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue("arrivalDeliveryDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
+                                                      sx: {
+                                                         backgroundColor: !values.arrivalDate
+                                                            ? "transparent"
+                                                            : "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                          <div className="flex-1">
+                                             <TimePicker
+                                                disabled={!values.arrivalDate}
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.arrivalDeliveryDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.arrivalDeliveryDate
+                                                      ? values.arrivalDeliveryDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue("arrivalDeliveryDate", updated);
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
+                                                      sx: {
+                                                         backgroundColor: !values.arrivalDate
+                                                            ? "transparent"
+                                                            : "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                       {errors.arrivalDeliveryDate && touched.arrivalDeliveryDate && (
+                                          <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                             <span className="text-xs font-semibold">{errors.arrivalDeliveryDate}</span>
+                                          </div>
+                                       )}
+                                    </div>
+                                 )}
+
+                                 {/* Departure Delivery Block (Disabled if no Departure Date in Step 3) */}
+                                 {values.orderHeaderFlightType !== "Arrival" && (
+                                    <div
+                                       className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.departureDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
+                                    >
+                                       <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                                          <span>
+                                             {langText.departureDeliveryDateTime?.[lang] ||
+                                                "Departure Delivery Date & Time (UTC)"}
+                                          </span>
+                                          {!values.departureDate && (
+                                             <span className="text-xs text-red-500 font-normal">
+                                                Requires Departure Date
+                                             </span>
+                                          )}
+                                       </h3>
+                                       <div className="flex flex-col md:flex-row gap-4">
+                                          <div className="flex-1">
+                                             <DatePicker
+                                                disabled={!values.departureDate}
+                                                format="DD/MM/YYYY"
+                                                value={values.departureDeliveryDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.departureDeliveryDate
+                                                      ? values.departureDeliveryDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue(
+                                                      "departureDeliveryDate",
+                                                      updated,
+                                                   );
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                      sx: {
+                                                         backgroundColor: !values.departureDate
+                                                            ? "transparent"
+                                                            : "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                          <div className="flex-1">
+                                             <TimePicker
+                                                disabled={!values.departureDate}
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.departureDeliveryDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.departureDeliveryDate
+                                                      ? values.departureDeliveryDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue(
+                                                      "departureDeliveryDate",
+                                                      updated,
+                                                   );
+                                                }}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                      sx: {
+                                                         backgroundColor: !values.departureDate
+                                                            ? "transparent"
+                                                            : "white",
+                                                         borderRadius: "8px",
+                                                         "& .MuiOutlinedInput-root": {
+                                                            fontSize: "14px",
+                                                         },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                       {errors.departureDeliveryDate && touched.departureDeliveryDate && (
+                                          <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                             <span className="text-xs font-semibold">{errors.departureDeliveryDate}</span>
+                                          </div>
+                                       )}
+                                    </div>
+                                 )}
+                              </div>
+                           </LocalizationProvider>
+                        )}
+
+
+                        {/* Navigation Footer (Extremely important for form flow) */}
+                        <div className="mt-auto pt-5 mt-6 border-t border-gray-100 flex items-center justify-between">
+                           <button
+                              type="button"
+                              onClick={() => setStep(Math.max(0, step - 1))}
+                              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all ${step === 0
+                                 ? "opacity-0 pointer-events-none"
+                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                 }`}
+                           >
+                              <FaArrowLeft size={14} /> {langText.back?.[lang] || "Back"}
+                           </button>
+
+                           <button
+                              type="button"
+                              onClick={submitForm}
+                              disabled={isSubmitting}
+                              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                           >
+                              {step === (isBankSelected ? 4 : 3) ? (
+                                 <>
+                                    <FaCheck size={14} />{" "}
+                                    {langText.submit?.[lang] || "Submit Order"}
+                                 </>
+                              ) : (
+                                 <>
+                                    {langText.next?.[lang] || "Next"}{" "}
+                                    <FaArrowRight size={14} />
+                                 </>
+                              )}
+                           </button>
+                        </div>
+                     </Form>
+                  )}
+               </Formik>
+            </div>
+         </div>
+      </div>
+   );
+}

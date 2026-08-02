@@ -1,0 +1,28 @@
+<USER_REQUEST>
+@[src/components/CreateOrderModal.jsx] 
+-make the "Bank Payment" and "Delivery" steps have a number like other steps
+- when i cloase the popup and open it again make it start from the first step
+-make the validation errors show up with the change of the fields
+- make next to every field a "x" icon to clear the field like @[src/components/HelperComponents/CustomLookup.jsx] 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-07-23T00:52:53+03:00.
+
+The user's current state is as follows:
+Active Document: e:\work\New folder\airCatering\src\components\CreateOrderModal.jsx (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 1698
+Other open documents:
+- e:\work\New folder\airCatering\src\components\CreateOrderModal.jsx (LANGUAGE_JAVASCRIPT)
+- e:\work\New folder\airCatering\src\components\HelperComponents\CustomLookup.jsx (LANGUAGE_JAVASCRIPT)
+- e:\work\New folder\airCatering\src\pages\myAccount\Summary.jsx (LANGUAGE_JAVASCRIPT)
+
+The user has mentioned some items in the form @[ITEM]. Here is extra information about the items that were mentioned by the user, in the order that they appear:
+
+@[src/components/CreateOrderModal.jsx] is a [File]:
+e:\work\New folder\airCatering\src\components\CreateOrderModal.jsx
+@[src/components/HelperComponents/CustomLookup.jsx] is a [File]:
+e:\work\New folder\airCatering\src\components\HelperComponents\CustomLookup.jsx
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
