@@ -19,6 +19,7 @@ import ClientDetails from "../../pages/Admin/Users/Details/ClientDetails";
 import UsersModule from "../../pages/Admin/Users/UsersModule";
 import DeliveredOrderPopup from "../../components/DeliveredOrderPopup";
 import OrderCreationReminderPopup from "../../components/OrderCreationReminderPopup";
+import ProfileCompletionPopup from "../../components/ProfileCompletionPopup";
 
 // ✅ Lazy-loaded components
 import GlobalTour from "../../components/guide/GlobalTour";
@@ -106,14 +107,51 @@ const SavedAddr = lazy(() => import("../../pages/myAccount/SavedAddr"));
 // import Orders from "../../pages/myAccount/Orders";
 // import SavedAddr from "../../pages/myAccount/SavedAddr";
 
+const checkTokenExpiration = (logout) => {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return;
+  try {
+    const user = JSON.parse(userStr);
+    const token = user?.encodedPayload;
+    if (token) {
+      const payloadBase64 = token.split('.')[1];
+      if (payloadBase64) {
+        // Base64Url decode
+        const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        
+        // Expiration is in seconds
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          logout();
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error decoding token:", err);
+  }
+};
+
 function Main() {
   const { lang } = useLangStore();
+  const logout = useAuthStore((state) => state.logout);
+
+  useEffect(() => {
+    checkTokenExpiration(logout);
+  }, [logout]);
+
   return (
     <>
       <main className={`min-h-screen flex flex-col ${lang === 'AR' && 'rtl'}`}>
         <Navbar />
         <div className="flex-1 relative h-full">
           <GlobalTour />
+          <ProfileCompletionPopup />
           <Outlet />
           <GreetingModal />
         </div>
@@ -124,12 +162,19 @@ function Main() {
 }
 
 function MobileMain() {
+  const logout = useAuthStore((state) => state.logout);
+
+  useEffect(() => {
+    checkTokenExpiration(logout);
+  }, [logout]);
+
   return (
     <>
       <main className="min-h-screen flex flex-col">
         <Navbar />
         <div className="flex-1">
           <GlobalTour />
+          <ProfileCompletionPopup />
           <Outlet />
           <GreetingModal />
         </div>
@@ -908,7 +953,6 @@ function Layout() {
     <Suspense
       fallback={<Loading fullScreen={true} />}
     >
-
       <RouterProvider router={router} />
     </Suspense>
   );

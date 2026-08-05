@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { FaPlus, FaMinus, FaTimes, FaLock } from "react-icons/fa";
+import { FaPlus, FaMinus, FaTimes, FaLock, FaHeart } from "react-icons/fa";
 import { onlineOrderToast } from "../assets/Helpers/onlineOrderToast";
 import { langText } from "../assets/constants/lang";
 
@@ -18,7 +18,11 @@ function ProductDetailsModal({
   UpdataDetailsMutation,
   orderDetails,
   isDeparture,
-  isArrival
+  isArrival,
+  addFavouriteMutation,
+  removeFavouriteMutation,
+  favouritedItems,
+  onToggleFavourite,
 }) {
   console.log("priceInfo", priceInfo);
 
@@ -193,6 +197,22 @@ function ProductDetailsModal({
           <FaTimes className="text-lg" />
         </button>
 
+        {/* Favourite button — only for logged-in users */}
+        {user && (
+          <button
+            onClick={(e) => onToggleFavourite(e, item)}
+            className={`absolute top-4 right-16 z-20 w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center active:scale-95 transition-all shadow-md cursor-pointer ${
+              favouritedItems?.[item?.itemID || item?.ItemID]
+                ? "bg-red-50 text-red-500 border border-red-200"
+                : "bg-white/85 text-gray-400 hover:bg-red-50 hover:text-red-400 hover:border hover:border-red-200"
+            }`}
+            aria-label="Add to favourites"
+            title={lang === "EN" ? "Add to favourites" : "أضف إلى المفضلة"}
+          >
+            <FaHeart className="text-base" />
+          </button>
+        )}
+
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
           {/* Details */}
@@ -278,7 +298,7 @@ function ProductDetailsModal({
               className="bg-primary text-white font-semibold py-3 px-6 rounded-full hover:bg-opacity-95 active:scale-95 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer min-w-[140px]"
             >
               <span className="text-sm">
-                {lang === "EN" ? "Add To Cart" : "أضف إلى السلة"}
+                {lang === "EN" ? "Add To Order" : "أضف إلى الطلب"}
               </span>
             </button>
           </div>

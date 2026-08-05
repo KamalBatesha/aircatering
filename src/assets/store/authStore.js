@@ -19,6 +19,12 @@ const useAuthStore = create((set) => ({
   logout: () => {
     set({ user: null });
     localStorage.removeItem("user");
+    // Clear profile popup dismissal states so it shows again on next login
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith("profilePopupDismissed_")) {
+        sessionStorage.removeItem(key);
+      }
+    });
   },
   setLoading: (loading) => set({ loading }),
   setUserShowFullData: (data) => {

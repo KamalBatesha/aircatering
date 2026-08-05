@@ -40,7 +40,7 @@ function Login({ onClose }) {
 		password: Yup.string()
 			.required(langText.PasswordIsRequired[lang])
 			.matches(
-				/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%#*?&])[A-Za-z\d@$!%#*?&]{8,}$/,
+				/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%#*?&-_])[A-Za-z\d@$!%#*?&-_]{8,}$/,
 				langText.passwordMustContainAtLeast8CharactersOneUppercaseOneLowercaseOneNumberAndOneSpecialCharacter[lang]
 			),
 	});

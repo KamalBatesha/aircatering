@@ -149,7 +149,25 @@ function Home() {
 
 
   function renderCartContent({ inDrawer = false } = {}) {
-    if (!selectedOrder || !user) {
+    if (!user) {
+      return (
+        <div className={`bg-white p-6 flex flex-col items-center justify-center border border-[#E5E5E5] shadow-sm ${inDrawer ? 'flex-1 rounded-none' : 'h-[550px] border-t-0 rounded-b-2xl'}`}>
+          <div className="text-center flex flex-col items-center justify-center gap-4">
+            <img src="images/empty-cart.svg" className="w-20 opacity-60" alt="" />
+            <p className="text-[#6b6b6b] text-sm font-semibold max-w-[200px] leading-relaxed">
+              {langText.pleaseLoginToViewYourOrders[lang]}
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="mt-4 w-full px-3 py-2 font-semibold text-base bg-primary rounded-full text-white border-0 hover:bg-secondary cursor-pointer transition-colors"
+            >
+              {langText.login[lang]}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    if (!selectedOrder) {
       return (
         <div className={`bg-white p-6 flex flex-col items-center justify-center border border-[#E5E5E5] shadow-sm ${inDrawer ? 'flex-1 rounded-none' : 'h-[550px] border-t-0 rounded-b-2xl'}`}>
           <div className="text-center flex flex-col items-center justify-center gap-4">
@@ -294,13 +312,15 @@ function Home() {
       {user && (displayOrders.length > 0 || guideEnabled || isLoading) && (
         <div id="guide-orders-carousel" className="relative container mx-auto px-2">
           {/* Left Arrow */}
-          <button
-            onClick={() => ordersScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer -translate-x-1"
-            aria-label="Scroll left"
-          >
-            <FaChevronLeft size={14} />
-          </button>
+          {!(isLoading && !guideEnabled) && (
+            <button
+              onClick={() => ordersScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer -translate-x-1"
+              aria-label="Scroll left"
+            >
+              <FaChevronLeft size={14} />
+            </button>
+          )}
 
           {/* Scrollable Track */}
           <div
@@ -321,13 +341,15 @@ function Home() {
           </div>
 
           {/* Right Arrow */}
-          <button
-            onClick={() => ordersScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer translate-x-1"
-            aria-label="Scroll right"
-          >
-            <FaChevronRight size={14} />
-          </button>
+          {!(isLoading && !guideEnabled) && (
+            <button
+              onClick={() => ordersScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer translate-x-1"
+              aria-label="Scroll right"
+            >
+              <FaChevronRight size={14} />
+            </button>
+          )}
         </div>
       )}
 
@@ -354,12 +376,18 @@ function Home() {
           <Menu scrollToItemId={location.state?.scrollToItemId} orderDetails={orderDetails} orderDetailsLoading={orderDetailsLoading} />
           <div className={`w-[33.33%] hidden lg:block ${lang === 'AR' ? 'pr-2' : 'pl-2'} sticky top-2 self-start`}>
             <div className="bg-[#49494A] p-4 text-center rounded-t-2xl border-b border-[#C5A76D] shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-[#C5A76D] font-semibold mb-1">
-                {lang === "AR" ? "الطلب المحدد" : "Selected Order"}
-              </p>
-              <h3 className="text-white text-sm font-bold truncate">
-                {selectedOrder ? selectedOrder.orderHeaderOrderNumber : langText.selectOrder[lang]}
-              </h3>
+              {user ? <>
+                <p className="text-xs uppercase tracking-widest text-[#C5A76D] font-semibold mb-1">
+                  {lang === "AR" ? "الطلب المحدد" : "Selected Order"}
+                </p>
+                <h3 className="text-white text-sm font-bold truncate">
+                  {selectedOrder ? selectedOrder.orderHeaderOrderNumber : langText.selectOrder[lang]}
+                </h3>
+              </> :
+                <p className="text-xs uppercase tracking-widest text-[#C5A76D] font-semibold mb-1">
+                  {lang === "AR" ? "يرجى تسجيل الدخول" : "Please login"}
+                </p>
+              }
             </div>
             {renderCartContent()}
           </div>

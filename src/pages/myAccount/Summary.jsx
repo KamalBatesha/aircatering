@@ -24,186 +24,7 @@ import {
 import { GetPayTypes } from "../../assets/apis/PurchasingAPI";
 import { Box, ClickAwayListener, IconButton, InputAdornment, MenuItem, MenuList, Paper, Popper, TextField } from "@mui/material";
 import { getMyGroundHandlerList } from "../../assets/apis/FinanceApi";
-
-const FreeTextLookup = ({
-  label,
-  options = [],
-  valueId,
-  valueName,
-  onChange,
-  getOptionLabel = (option) => option?.label || "",
-  getOptionValue = (option) => option?.id,
-  error,
-  placeholder,
-  disabled = false,
-}) => {
-  const [inputValue, setInputValue] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const containerRef = React.useRef(null);
-
-  useEffect(() => {
-    setInputValue(valueName || "");
-    setIsTyping(false);
-  }, [valueName]);
-
-  const filteredOptions = React.useMemo(() => {
-    if (!isTyping) return options;
-
-    const input = inputValue.trim().toLowerCase();
-    if (!input) return options;
-
-    return options
-      .filter((opt) => getOptionLabel(opt).toLowerCase().includes(input))
-      .sort((a, b) => {
-        const aLabel = getOptionLabel(a).toLowerCase();
-        const bLabel = getOptionLabel(b).toLowerCase();
-
-        const aStarts = aLabel.startsWith(input);
-        const bStarts = bLabel.startsWith(input);
-
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-
-        return aLabel.localeCompare(bLabel);
-      });
-  }, [options, inputValue, getOptionLabel, isTyping]);
-
-  const handleInputChange = (e) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    setIsTyping(true);
-    if (!newValue) {
-      onChange(null, "");
-    } else {
-      const matchedOption = options.find(
-        (opt) => getOptionLabel(opt).toLowerCase() === newValue.trim().toLowerCase()
-      );
-      if (matchedOption) {
-        onChange(getOptionValue(matchedOption), getOptionLabel(matchedOption));
-      } else {
-        onChange(0, newValue);
-      }
-    }
-    setIsOpen(true);
-  };
-
-  const handleSelect = (option) => {
-    onChange(getOptionValue(option), getOptionLabel(option));
-    setInputValue(getOptionLabel(option));
-    setIsTyping(false);
-    setIsOpen(false);
-  };
-
-  const handleClear = (e) => {
-    e.stopPropagation();
-    setInputValue("");
-    setIsTyping(false);
-    onChange(null, "");
-    setIsOpen(false);
-  };
-  return (
-    <ClickAwayListener onClickAway={() => setIsOpen(false)}>
-      <div ref={containerRef} style={{ width: "100%" }}>
-        <TextField
-          label={label}
-          value={inputValue}
-          onChange={handleInputChange}
-          onFocus={(e) => {
-            if (!disabled) {
-              setIsOpen(true);
-              e.target.select();
-            }
-          }}
-          size="small"
-          error={error}
-          disabled={disabled}
-          placeholder={placeholder}
-          fullWidth
-          autoComplete="new-password"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "24px",
-              backgroundColor: "var(--color-bg-box)",
-              height: "38px",
-              fontSize: "14px",
-              paddingRight: inputValue ? "4px" : undefined,
-            },
-            "& .MuiInputBase-input": {
-              color: "var(--color-primary) !important",
-              padding: "0 12px",
-            },
-            "& .MuiInputLabel-root": {
-              fontSize: "14px",
-              lineHeight: "14px",
-              transform: "translate(14px, 12px) scale(1)",
-              "&.Mui-focused, &.MuiInputLabel-shrink": {
-                transform: "translate(14px, -12px) scale(0.75)",
-              },
-            },
-          }}
-          slotProps={{
-            input: {
-              endAdornment: inputValue ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={handleClear}
-                    tabIndex={-1}
-                    sx={{
-                      padding: "5px",
-                      color: "var(--color-primary)",
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            },
-          }}
-        />
-        <Popper
-          open={isOpen}
-          anchorEl={containerRef.current}
-          placement="bottom-start"
-          style={{
-            zIndex: 20000000,
-            width: containerRef.current?.offsetWidth,
-          }}
-          modifiers={[
-            { name: "flip", enabled: true, options: { fallbackPlacements: ["top"] } },
-            { name: "preventOverflow", enabled: true, options: { boundary: "viewport" } },
-          ]}
-        >
-          <Paper
-            className="popup-component"
-            elevation={3}
-            sx={{ mt: 0.5, width: "100%", height: "100%", maxHeight: 300, overflow: "hidden", display: "flex", flexDirection: "column" }}
-          >
-            <MenuList dense sx={{ overflowY: "auto", flex: 1, p: 0 }}>
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => (
-                  <MenuItem
-                    key={getOptionValue(option)}
-                    onClick={() => handleSelect(option)}
-                    sx={{ fontSize: "14px", py: 1.5 }}
-                  >
-                    {getOptionLabel(option)}
-                  </MenuItem>
-                ))
-              ) : (
-                <Box sx={{ p: 2, fontSize: "14px", color: "text.secondary", textAlign: "center" }}>No options</Box>
-              )}
-            </MenuList>
-          </Paper>
-        </Popper>
-      </div>
-    </ClickAwayListener>
-  );
-};
+import FreeTextLookup from "../../components/HelperComponents/FreeTextLookup";
 
 function Summary() {
   const { lang } = useLangStore();
@@ -219,8 +40,8 @@ function Summary() {
   const { data: flightNumbers } = useQuery({ queryKey: ["flightNumbers"], queryFn: getMyFlightNumbers });
   const { data: registrations } = useQuery({ queryKey: ["registrations"], queryFn: getMyRegistrations });
   const { data: airCrafts } = useQuery({ queryKey: ["airCrafts"], queryFn: getMyAirCrafts });
-  const { data: agents } = useQuery({ queryKey: ["agents"], queryFn: getMyAgent });
-  const { data: operators } = useQuery({ queryKey: ["operators"], queryFn: getMyOperators });
+  const { data: agents } = useQuery({ queryKey: ["agents"], queryFn: getMyAgent, select: (data) => data?.filter(item => !!item?.agentName) });
+  const { data: operators } = useQuery({ queryKey: ["operators"], queryFn: getMyOperators, select: (data) => data?.filter(item => !!item?.operatorName) });
   const { data: billTo } = useQuery({ queryKey: ["billTo"], queryFn: getMyBillTo });
   const { data: payTypes } = useQuery({ queryKey: ["payTypes"], queryFn: GetPayTypes });
 
@@ -238,26 +59,34 @@ function Summary() {
       customerSubscribe: values.customerSubscribe,
       customerSubscribeDate: values.customerSubscribeDate,
       flightId: values.flightId || 0,
+      flightNumberName: values.flightName || null,
       registrationId: values.registrationId || 0,
+      registrationName: values.registrationName || null,
       airCraftId: values.airCraftId || 0,
+      acTypeName: values.aircraftTypeName || null,
       paymentMethodId: values.paymentMethodId || 0,
       agentId: values.agentId || 0,
-      // agentIsVisible: values.agentIsVisible,
-      // agentIsRequired: values.agentIsRequired,
+      agentName: values.agentName || null,
+      agentIsVisible: values.agentIsVisible,
+      agentIsRequired: values.agentIsRequired,
       operatorId: values.operatorId || 0,
-      // operatorIsVisible: values.operatorIsVisible,
-      // operatorIsRequired: values.operatorIsRequired,
+      operatorName: values.operatorName || null,
+      operatorIsVisible: values.operatorIsVisible,
+      operatorIsRequired: values.operatorIsRequired,
       billToId: values.billToId || 0,
+      billToName: values.billToName || null,
       invoicingEmail: values.invoicingEmail,
       cateringEmail: values.cateringEmail,
       paymentInfoAccountHolder: values.paymentInfoAccountHolder,
+      paymentInfoAccountBankName: values.paymentInfoAccountBankName,
+      paymentInfoAccountNumber: values.paymentInfoAccountNumber,
       paymentInfoIBan: values.paymentInfoIBan,
       paymentInfoSwiftCode: values.paymentInfoSwiftCode,
       groundHandlerIsVisible: values.groundHandlerIsVisible,
       groundHandlerId: values.groundHandlerId || 0,
-      groundHandlerName: values.groundHandlerName,
-      groundHandlerEmail: values.groundHandlerEmail,
-      groundHandlerPhone: values.groundHandlerPhone,
+      groundHandlerName: values.groundHandlerName || null,
+      groundHandlerIEmail: values.groundHandlerEmail || null,
+      groundHandlerPhone: values.groundHandlerPhone || null,
     };
     editMySettingsMutation.mutate(payload, {
       onMutate: () => {
@@ -312,6 +141,8 @@ function Summary() {
       invoicingEmail: mySettings?.invoicingEmail || "",
       cateringEmail: mySettings?.cateringEmail || "",
       paymentInfoAccountHolder: mySettings?.paymentInfoAccountHolder || "",
+      paymentInfoAccountBankName: mySettings?.paymentInfoAccountBankName || "",
+      paymentInfoAccountNumber: mySettings?.paymentInfoAccountNumber || "",
       paymentInfoIBan: mySettings?.paymentInfoIBan || "",
       paymentInfoSwiftCode: mySettings?.paymentInfoSwiftCode || "",
       groundHandlerIsVisible: mySettings?.groundHandlerIsVisible ?? false,
@@ -418,141 +249,141 @@ function Summary() {
             {/* Default Order Values Section */}
             <div id="guide-summary-default" className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="col-span-1 md:col-span-2 mt-2 mb-1">
-              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <FiEdit3 size={14} style={{ color: "var(--color-primary)" }} />
-                {lang === "AR" ? "القيم الافتراضية للطلب التالي" : "Default Values for Next Order"}
-              </h4>
-              <p className="text-xs text-gray-500 mt-1">
-                {lang === "AR"
-                  ? "سيتم استخدام هذه الحقول كقيم افتراضية عند إنشاء طلب جديد."
-                  : "These fields will be used as default values when creating a new order."}
-              </p>
-              <div className="w-full h-px mt-3" style={{ background: "linear-gradient(90deg, rgba(197,167,109,0.3) 0%, transparent 100%)" }}></div>
-            </div>
+                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <FiEdit3 size={14} style={{ color: "var(--color-primary)" }} />
+                  {lang === "AR" ? "القيم الافتراضية للطلب التالي" : "Default Values for Next Order"}
+                </h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  {lang === "AR"
+                    ? "سيتم استخدام هذه الحقول كقيم افتراضية عند إنشاء طلب جديد."
+                    : "These fields will be used as default values when creating a new order."}
+                </p>
+                <div className="w-full h-px mt-3" style={{ background: "linear-gradient(90deg, rgba(197,167,109,0.3) 0%, transparent 100%)" }}></div>
+              </div>
 
-            {/* Dropdowns */}
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {langText.flightNumber[lang]}
-              </label>
-              <FreeTextLookup
-                options={flightNumbers || []}
-                valueId={formik.values.flightId}
-                valueName={formik.values.flightName}
-                onChange={(id, name) => {
-                  formik.setFieldValue("flightId", id);
-                  formik.setFieldValue("flightName", name);
-                }}
-                getOptionLabel={(opt) => opt.flightNumberName}
-                getOptionValue={(opt) => opt.flightNumberId}
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {langText.registration[lang]}
-              </label>
-              <FreeTextLookup
-                options={registrations || []}
-                valueId={formik.values.registrationId}
-                valueName={formik.values.registrationName}
-                onChange={(id, name) => {
-                  formik.setFieldValue("registrationId", id);
-                  formik.setFieldValue("registrationName", name);
-                }}
-                getOptionLabel={(opt) => opt.registrationName}
-                getOptionValue={(opt) => opt.registrationId}
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {langText.aircraftType[lang]}
-              </label>
-              <FreeTextLookup
-                options={airCrafts || []}
-                valueId={formik.values.airCraftId}
-                valueName={formik.values.aircraftTypeName}
-                onChange={(id, name) => {
-                  formik.setFieldValue("airCraftId", id);
-                  formik.setFieldValue("aircraftTypeName", name);
-                }}
-                getOptionLabel={(opt) => opt.airCraftName}
-                getOptionValue={(opt) => opt.airCraftId}
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {langText.paymentMethod[lang]}
-              </label>
-              <CustomLookup
-                options={payTypes || []}
-                value={formik.values.paymentMethodId}
-                onChange={(val) => {
-                  formik.setFieldValue("paymentMethodId", val);
-                  const selectedOpt = payTypes?.find(p => p.cashTransactionTypeId === val);
-                  if (selectedOpt) formik.setFieldValue("paymentMethodName", selectedOpt.cashTransactionTypeName);
-                }}
-                getOptionLabel={(opt) => opt.cashTransactionTypeName}
-                getOptionValue={(opt) => opt.cashTransactionTypeId}
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {langText.billTo[lang]}
-              </label>
-              <FreeTextLookup
-                options={billTo || []}
-                valueId={formik.values.billToId}
-                valueName={formik.values.billToName}
-                onChange={(id, name) => {
-                  formik.setFieldValue("billToId", id);
-                  formik.setFieldValue("billToName", name);
-                }}
-                getOptionLabel={(opt) => opt.billToName}
-                getOptionValue={(opt) => opt.billToId}
-              />
-            </div>
-
-            {formik.values.operatorIsVisible && (
+              {/* Dropdowns */}
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {langText.operator[lang]}
+                  {langText.flightNumber[lang]}
                 </label>
                 <FreeTextLookup
-                  options={operators || []}
-                  valueId={formik.values.operatorId}
-                  valueName={formik.values.operatorName}
+                  options={flightNumbers || []}
+                  valueId={formik.values.flightId}
+                  valueName={formik.values.flightName}
                   onChange={(id, name) => {
-                    formik.setFieldValue("operatorId", id);
-                    formik.setFieldValue("operatorName", name);
+                    formik.setFieldValue("flightId", id);
+                    formik.setFieldValue("flightName", name);
                   }}
-                  getOptionLabel={(opt) => opt.operatorName}
-                  getOptionValue={(opt) => opt.operatorId}
+                  getOptionLabel={(opt) => opt.flightNumberName}
+                  getOptionValue={(opt) => opt.flightNumberId}
                 />
               </div>
-            )}
 
-            {formik.values.agentIsVisible && (
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {langText.agent[lang]}
+                  {langText.registration[lang]}
                 </label>
                 <FreeTextLookup
-                  options={agents || []}
-                  valueId={formik.values.agentId}
-                  valueName={formik.values.agentName}
+                  options={registrations || []}
+                  valueId={formik.values.registrationId}
+                  valueName={formik.values.registrationName}
                   onChange={(id, name) => {
-                    formik.setFieldValue("agentId", id);
-                    formik.setFieldValue("agentName", name);
+                    formik.setFieldValue("registrationId", id);
+                    formik.setFieldValue("registrationName", name);
                   }}
-                  getOptionLabel={(opt) => opt.agentName}
-                  getOptionValue={(opt) => opt.agentId}
+                  getOptionLabel={(opt) => opt.registrationName}
+                  getOptionValue={(opt) => opt.registrationId}
                 />
               </div>
-            )}
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {langText.aircraftType[lang]}
+                </label>
+                <FreeTextLookup
+                  options={airCrafts || []}
+                  valueId={formik.values.airCraftId}
+                  valueName={formik.values.aircraftTypeName}
+                  onChange={(id, name) => {
+                    formik.setFieldValue("airCraftId", id);
+                    formik.setFieldValue("aircraftTypeName", name);
+                  }}
+                  getOptionLabel={(opt) => opt.airCraftName}
+                  getOptionValue={(opt) => opt.airCraftId}
+                />
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {langText.paymentMethod[lang]}
+                </label>
+                <CustomLookup
+                  options={payTypes || []}
+                  value={formik.values.paymentMethodId}
+                  onChange={(val) => {
+                    formik.setFieldValue("paymentMethodId", val);
+                    const selectedOpt = payTypes?.find(p => p.cashTransactionTypeId === val);
+                    if (selectedOpt) formik.setFieldValue("paymentMethodName", selectedOpt.cashTransactionTypeName);
+                  }}
+                  getOptionLabel={(opt) => opt.cashTransactionTypeName}
+                  getOptionValue={(opt) => opt.cashTransactionTypeId}
+                />
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {langText.billTo[lang]}
+                </label>
+                <FreeTextLookup
+                  options={billTo || []}
+                  valueId={formik.values.billToId}
+                  valueName={formik.values.billToName}
+                  onChange={(id, name) => {
+                    formik.setFieldValue("billToId", id);
+                    formik.setFieldValue("billToName", name);
+                  }}
+                  getOptionLabel={(opt) => opt.billToName}
+                  getOptionValue={(opt) => opt.billToId}
+                />
+              </div>
+
+              {formik.values.operatorIsVisible && (
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {langText.operator[lang]}
+                  </label>
+                  <FreeTextLookup
+                    options={operators || []}
+                    valueId={formik.values.operatorId}
+                    valueName={formik.values.operatorName}
+                    onChange={(id, name) => {
+                      formik.setFieldValue("operatorId", id);
+                      formik.setFieldValue("operatorName", name);
+                    }}
+                    getOptionLabel={(opt) => opt.operatorName}
+                    getOptionValue={(opt) => opt.operatorId}
+                  />
+                </div>
+              )}
+
+              {formik.values.agentIsVisible && (
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {langText.agent[lang]}
+                  </label>
+                  <FreeTextLookup
+                    options={agents || []}
+                    valueId={formik.values.agentId}
+                    valueName={formik.values.agentName}
+                    onChange={(id, name) => {
+                      formik.setFieldValue("agentId", id);
+                      formik.setFieldValue("agentName", name);
+                    }}
+                    getOptionLabel={(opt) => opt.agentName}
+                    getOptionValue={(opt) => opt.agentId}
+                  />
+                </div>
+              )}
             </div>
 
             {formik.values.groundHandlerIsVisible && (
@@ -635,26 +466,34 @@ function Summary() {
             )}
           </div>
 
-          {/* Bank Information Display */}
-          {(mySettings?.paymentInfoAccountBankName || mySettings?.paymentInfoAccountNumber || mySettings?.paymentInfoIBan || mySettings?.paymentInfoSwiftCode) && (
+          {/* Bank Information - editable when paymentMethodId === 3 */}
+          {formik.values.paymentMethodId === 3 && (
             <div
               id="guide-summary-bank"
               className="rounded-2xl p-5 flex flex-col gap-4 mb-2"
               style={{ border: "1px solid var(--color-light-gray)", background: "rgba(197,167,109,0.02)" }}
             >
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-1">
                 <FaUniversity size={16} style={{ color: "var(--color-primary)" }} />
                 <h4 className="text-sm font-bold text-gray-800">
                   {lang === "AR" ? "المعلومات البنكية" : "Bank Information"}
                 </h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {mySettings?.paymentInfoAccountBankName && (
+                {[
+                  { field: "paymentInfoAccountHolder", label: lang === "AR" ? "اسم صاحب الحساب" : "Account Holder" },
+                  { field: "paymentInfoAccountBankName", label: lang === "AR" ? "اسم البنك" : "Bank Name" },
+                  { field: "paymentInfoAccountNumber", label: lang === "AR" ? "رقم الحساب" : "Account Number" },
+                  { field: "paymentInfoIBan", label: "IBAN" },
+                  { field: "paymentInfoSwiftCode", label: "Swift Code" },
+                ].map(({ field, label }) => (
                   <TextField
-                    label={lang === "AR" ? "اسم البنك" : "Bank Name"}
-                    value={mySettings.paymentInfoAccountBankName}
+                    key={field}
+                    label={label}
+                    value={formik.values[field] || ""}
+                    onChange={formik.handleChange(field)}
+                    onBlur={formik.handleBlur(field)}
                     size="small"
-                    disabled
                     fullWidth
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -665,110 +504,18 @@ function Summary() {
                       },
                       "& .MuiInputBase-input": {
                         color: "var(--color-primary) !important",
-                        WebkitTextFillColor: "var(--color-primary) !important",
                         padding: "0 12px",
                       },
                       "& .MuiInputLabel-root": {
-                        fontSize: "14px",
-                        lineHeight: "14px",
-                        transform: "translate(14px, 12px) scale(1)",
+                        fontSize: "13px",
+                        transform: "translate(14px, 11px) scale(1)",
                         "&.Mui-focused, &.MuiInputLabel-shrink": {
-                          transform: "translate(14px, -12px) scale(0.75)",
+                          transform: "translate(14px, -9px) scale(0.75)",
                         },
                       },
                     }}
                   />
-                )}
-                {mySettings?.paymentInfoAccountNumber && (
-                  <TextField
-                    label={lang === "AR" ? "رقم الحساب" : "Account Number"}
-                    value={mySettings.paymentInfoAccountNumber}
-                    size="small"
-                    disabled
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "24px",
-                        backgroundColor: "var(--color-bg-box)",
-                        height: "38px",
-                        fontSize: "14px",
-                      },
-                      "& .MuiInputBase-input": {
-                        color: "var(--color-primary) !important",
-                        WebkitTextFillColor: "var(--color-primary) !important",
-                        padding: "0 12px",
-                      },
-                      "& .MuiInputLabel-root": {
-                        fontSize: "14px",
-                        lineHeight: "14px",
-                        transform: "translate(14px, 12px) scale(1)",
-                        "&.Mui-focused, &.MuiInputLabel-shrink": {
-                          transform: "translate(14px, -12px) scale(0.75)",
-                        },
-                      },
-                    }}
-                  />
-                )}
-                {mySettings?.paymentInfoIBan && (
-                  <TextField
-                    label="IBAN"
-                    value={mySettings.paymentInfoIBan}
-                    size="small"
-                    disabled
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "24px",
-                        backgroundColor: "var(--color-bg-box)",
-                        height: "38px",
-                        fontSize: "14px",
-                      },
-                      "& .MuiInputBase-input": {
-                        color: "var(--color-primary) !important",
-                        WebkitTextFillColor: "var(--color-primary) !important",
-                        padding: "0 12px",
-                      },
-                      "& .MuiInputLabel-root": {
-                        fontSize: "14px",
-                        lineHeight: "14px",
-                        transform: "translate(14px, 12px) scale(1)",
-                        "&.Mui-focused, &.MuiInputLabel-shrink": {
-                          transform: "translate(14px, -12px) scale(0.75)",
-                        },
-                      },
-                    }}
-                  />
-                )}
-                {mySettings?.paymentInfoSwiftCode && (
-                  <TextField
-                    label="Swift Code"
-                    value={mySettings.paymentInfoSwiftCode}
-                    size="small"
-                    disabled
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "24px",
-                        backgroundColor: "var(--color-bg-box)",
-                        height: "38px",
-                        fontSize: "14px",
-                      },
-                      "& .MuiInputBase-input": {
-                        color: "var(--color-primary) !important",
-                        WebkitTextFillColor: "var(--color-primary) !important",
-                        padding: "0 12px",
-                      },
-                      "& .MuiInputLabel-root": {
-                        fontSize: "14px",
-                        lineHeight: "14px",
-                        transform: "translate(14px, 12px) scale(1)",
-                        "&.Mui-focused, &.MuiInputLabel-shrink": {
-                          transform: "translate(14px, -12px) scale(0.75)",
-                        },
-                      },
-                    }}
-                  />
-                )}
+                ))}
               </div>
             </div>
           )}

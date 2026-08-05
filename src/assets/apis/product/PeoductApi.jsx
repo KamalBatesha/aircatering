@@ -57,6 +57,39 @@ export function DeleteOrderItemAirCatering(detailId) {
         });
 }
 
+export function AddFavoriteItem(ItemId) {
+    return axiosInstance
+        .post(`/api/AirCatering/AddFavoriteItem?ItemId=${ItemId}`)
+        .then((response) => {
+            return response.data || response;
+        })
+        .catch((error) => {
+            throw error;
+        });
+}
+
+export function GetClientFavoriteItems() {
+    return axiosInstance
+        .get(`/api/AirCatering/GetClientFavoriteItems`)
+        .then((response) => {
+            return response.data || response;
+        })
+        .catch((error) => {
+            throw error;
+        });
+}
+
+export function RemoveFromFavoriteItems(itemId) {
+    return axiosInstance
+        .delete(`/api/AirCatering/RemoveFromFavoriteItems?itemId=${itemId}`)
+        .then((response) => {
+            return response.data || response;
+        })
+        .catch((error) => {
+            throw error;
+        });
+}
+
 export function UpdateOrderHeaderAirCatering(OrderId, data) {
     return axiosInstance
         .patch(`/api/AirCatering/UpdateOrderHeaderAirCatering?OrderId=${OrderId}`, data)

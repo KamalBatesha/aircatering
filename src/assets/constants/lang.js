@@ -1373,6 +1373,10 @@ const langText = {
     EN: "Please select an order to view its details",
     AR: "الرجاء اختيار طلب لعرض تفاصيله",
   },
+  pleaseLoginToViewYourOrders: {
+    EN: "Please login to view your orders",
+    AR: "يرجى تسجيل الدخول لعرض طلباتك",
+  },
   itemAddedSuccessfully: {
     EN: "Item added successfully",
     AR: "تم إضافة العنصر بنجاح",

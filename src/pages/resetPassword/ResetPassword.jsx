@@ -40,7 +40,7 @@ export default function ResetPassword() {
     .matches(/(?=.*[a-z])/, langText.MustContainALowercaseLetter[lang])
     .matches(/(?=.*[A-Z])/, langText.MustContainAUppercaseLetter[lang])
     .matches(/(?=.*\d)/, langText.MustContainANumber[lang])
-    .matches(/(?=.*[@$!%*?&])/, langText.MustContainASpecialCharacter[lang]);
+    .matches(/(?=.*[[@$!%#*?&-_])/, langText.MustContainASpecialCharacter[lang]);
 
   const schema = Yup.object().shape({
     password: passwordSchema,
