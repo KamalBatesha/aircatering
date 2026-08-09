@@ -123,8 +123,8 @@ const CustomLookup = ({
             "& .MuiOutlinedInput-root": {
               borderRadius: "24px",
               backgroundColor: "var(--color-bg-box)",
-              height: "30px",
-              fontSize: "12px",
+              height: "38px",
+              fontSize: "14px",
               paddingRight: inputValue ? "4px" : undefined,
             },
             "& .MuiInputBase-input": {
@@ -132,9 +132,9 @@ const CustomLookup = ({
               padding: "0 12px",
             },
             "& .MuiInputLabel-root": {
-              fontSize: "12px",
+              fontSize: "14px",
               lineHeight: "14px",
-              transform: "translate(14px, 8px) scale(1)",
+              transform: "translate(14px, 12px) scale(1)",
               "&.Mui-focused, &.MuiInputLabel-shrink": {
                 transform: "translate(14px, -12px) scale(0.75)",
               },

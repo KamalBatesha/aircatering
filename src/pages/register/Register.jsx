@@ -732,7 +732,7 @@ function Request() {
           viewport={{ once: true, amount: 0.3 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full flex items-center md:gap-9 flex-col md:flex-row "
+          className="w-full flex flex-col md:flex-row md:items-stretch md:gap-9"
         >
           <input
             type="text"
@@ -741,7 +741,7 @@ function Request() {
             value={formik.values.companyPersonalName}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            className="border-0 border-b border-primary w-full py-4 transition-all duration-300 ps-0 focus:ps-5 focus:outline-none"
+            className="box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none"
           />
           {(formik.errors.companyPersonalName && formik.touched.companyPersonalName) && <div className="w-full text-red-400 md:hidden ">{formik.errors.companyPersonalName}</div>}
 
@@ -753,28 +753,28 @@ function Request() {
             value={formik.values.companyName}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            className="border-0 border-b border-primary w-full py-4 transition-all duration-300 ps-0 focus:ps-5 focus:outline-none"
+            className="box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none"
           />
           {(formik.errors.companyName && formik.touched.companyName) && <div className="w-full text-red-400 md:hidden">{formik.errors.companyName}</div>}
 
         </motion.div>
-        <div className="items-center w-full text-red-400 hidden md:flex">
-          {<div className="w-1/2">{(formik.errors.companyPersonalName && formik.touched.companyPersonalName) && formik.errors.companyPersonalName}</div>}
-          {<div className="w-1/2">{(formik.errors.companyName && formik.touched.companyName) && formik.errors.companyName}</div>}
+        <div className="items-center w-full text-red-400 hidden md:flex md:gap-9">
+          {<div className="flex-1 w-full">{(formik.errors.companyPersonalName && formik.touched.companyPersonalName) && formik.errors.companyPersonalName}</div>}
+          {<div className="flex-1 w-full">{(formik.errors.companyName && formik.touched.companyName) && formik.errors.companyName}</div>}
         </div>
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           viewport={{ once: true, amount: 0.3 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="w-full flex items-center md:gap-9 flex-col md:flex-row "
+          className="w-full flex flex-col md:flex-row md:items-stretch md:gap-9"
         >
           <select
             name='contryID'
             value={formik.values.contryID}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            className='border-0 border-b border-primary w-full py-4 transition-all duration-300 ps-0 focus:ps-5 focus:outline-none'>
+            className='box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none'>
             <option value="">{langText.selectCountry[lang]}</option>
             {countries?.length > 0 && countries.map((item) => (
               <option key={item.countryID} value={item.countryID}>
@@ -791,14 +791,14 @@ function Request() {
             onBlur={formik.handleBlur}
             type="text"
             placeholder={langText.phoneNumber[lang]}
-            className="border-0 border-b border-primary w-full py-4 transition-all duration-300 ps-0 focus:ps-5 focus:outline-none"
+            className="box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none"
           />
           {(formik.errors.mobil && formik.touched.mobil) && <div className="w-full text-red-400 md:hidden ">{formik.errors.mobil}</div>}
 
         </motion.div>
-        <div className="items-center w-full text-red-400 hidden md:flex">
-          {<div className="w-1/2">{(formik.errors.contryID && formik.touched.contryID) && formik.errors.contryID}</div>}
-          {<div className="w-1/2">{(formik.errors.mobil && formik.touched.mobil) && formik.errors.mobil}</div>}
+        <div className="items-center w-full text-red-400 hidden md:flex md:gap-9">
+          {<div className="flex-1 w-full">{(formik.errors.contryID && formik.touched.contryID) && formik.errors.contryID}</div>}
+          {<div className="flex-1 w-full">{(formik.errors.mobil && formik.touched.mobil) && formik.errors.mobil}</div>}
         </div>
         <motion.div
           initial={{ opacity: 0, y: 50 }}

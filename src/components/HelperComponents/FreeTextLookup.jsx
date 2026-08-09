@@ -12,6 +12,7 @@ export default function FreeTextLookup({
   error,
   placeholder,
   disabled = false,
+  uppercase = false,
 }) {
   const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -46,7 +47,10 @@ export default function FreeTextLookup({
   }, [options, inputValue, getOptionLabel, isTyping]);
 
   const handleInputChange = (e) => {
-    const newValue = e.target.value;
+    let newValue = e.target.value;
+    if (uppercase) {
+      newValue = newValue.toUpperCase();
+    }
     setInputValue(newValue);
     setIsTyping(true);
     if (!newValue) {

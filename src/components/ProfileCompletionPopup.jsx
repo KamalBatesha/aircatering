@@ -264,12 +264,25 @@ export default function ProfileCompletionPopup() {
 
               {missing.cateringEmail && (
                 <div className="col-span-1">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1">
-                    <FiMail size={14} className="text-primary" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {lang === "AR" ? "بريد التموين الإلكتروني" : "Catering Email"}
                   </label>
-                  <input
-                    className="w-full px-4 py-2 rounded-xl text-sm outline-none font-medium transition-all duration-200 border border-gray-200 bg-gray-50 focus:border-primary focus:bg-white"
+                  <TextField
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "24px",
+                        backgroundColor: "var(--color-bg-box)",
+                        height: "38px",
+                        fontSize: "14px",
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "var(--color-primary) !important",
+                        padding: "0 12px",
+                      },
+                    }}
                     {...formik.getFieldProps("cateringEmail")}
                   />
                 </div>
@@ -277,12 +290,25 @@ export default function ProfileCompletionPopup() {
 
               {missing.invoicingEmail && (
                 <div className="col-span-1">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1">
-                    <FiMail size={14} className="text-primary" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {lang === "AR" ? "بريد الفواتير الإلكتروني" : "Invoicing Email"}
                   </label>
-                  <input
-                    className="w-full px-4 py-2 rounded-xl text-sm outline-none font-medium transition-all duration-200 border border-gray-200 bg-gray-50 focus:border-primary focus:bg-white"
+                  <TextField
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "24px",
+                        backgroundColor: "var(--color-bg-box)",
+                        height: "38px",
+                        fontSize: "14px",
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "var(--color-primary) !important",
+                        padding: "0 12px",
+                      },
+                    }}
                     {...formik.getFieldProps("invoicingEmail")}
                   />
                 </div>
@@ -298,6 +324,7 @@ export default function ProfileCompletionPopup() {
                     onChange={(id, name) => { formik.setFieldValue("flightId", id); formik.setFieldValue("flightName", name); }}
                     getOptionLabel={(opt) => opt.flightNumberName}
                     getOptionValue={(opt) => opt.flightNumberId}
+                    uppercase={true}
                   />
                 </div>
               )}
@@ -312,6 +339,7 @@ export default function ProfileCompletionPopup() {
                     onChange={(id, name) => { formik.setFieldValue("registrationId", id); formik.setFieldValue("registrationName", name); }}
                     getOptionLabel={(opt) => opt.registrationName}
                     getOptionValue={(opt) => opt.registrationId}
+                    uppercase={true}
                   />
                 </div>
               )}
@@ -326,6 +354,7 @@ export default function ProfileCompletionPopup() {
                     onChange={(id, name) => { formik.setFieldValue("airCraftId", id); formik.setFieldValue("aircraftTypeName", name); }}
                     getOptionLabel={(opt) => opt.airCraftName}
                     getOptionValue={(opt) => opt.airCraftId}
+                    uppercase={true}
                   />
                 </div>
               )}
@@ -392,6 +421,7 @@ export default function ProfileCompletionPopup() {
                     }}
                     getOptionLabel={(opt) => opt.groundHandlerName}
                     getOptionValue={(opt) => opt.groundHandlerId}
+                    uppercase={true}
                   />
                 </div>
               )}
@@ -401,9 +431,27 @@ export default function ProfileCompletionPopup() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {lang === "EN" ? "Ground Handler Email" : "البريد الإلكتروني لمزود الخدمة"}
                   </label>
-                  <input
-                    className="w-full px-4 py-2 rounded-xl text-sm outline-none font-medium transition-all duration-200 border border-gray-200 bg-gray-50 focus:border-primary focus:bg-white"
+                  <TextField
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "24px",
+                        backgroundColor: "var(--color-bg-box)",
+                        height: "38px",
+                        fontSize: "14px",
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "var(--color-primary) !important",
+                        padding: "0 12px",
+                      },
+                    }}
                     {...formik.getFieldProps("groundHandlerEmail")}
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toUpperCase();
+                      formik.handleChange(e);
+                    }}
                   />
                 </div>
               )}
@@ -413,17 +461,34 @@ export default function ProfileCompletionPopup() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {lang === "EN" ? "Ground Handler Phone" : "هاتف مزود الخدمة الأرضية"}
                   </label>
-                  <input
-                    className="w-full px-4 py-2 rounded-xl text-sm outline-none font-medium transition-all duration-200 border border-gray-200 bg-gray-50 focus:border-primary focus:bg-white"
+                  <TextField
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "24px",
+                        backgroundColor: "var(--color-bg-box)",
+                        height: "38px",
+                        fontSize: "14px",
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "var(--color-primary) !important",
+                        padding: "0 12px",
+                      },
+                    }}
                     {...formik.getFieldProps("groundHandlerPhone")}
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toUpperCase();
+                      formik.handleChange(e);
+                    }}
                   />
                 </div>
               )}
 
               {missing.paymentMethodId && (
                 <div className="col-span-1">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-1">
-                    <FaMoneyCheckAlt size={14} className="text-primary" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {langText.paymentMethod?.[lang] || "Payment Method"}
                   </label>
                   <CustomLookup
@@ -464,6 +529,10 @@ export default function ProfileCompletionPopup() {
                       size="small"
                       fullWidth
                       {...formik.getFieldProps(field)}
+                      onChange={(e) => {
+                        e.target.value = e.target.value.toUpperCase();
+                        formik.handleChange(e);
+                      }}
                       error={formik.touched[field] && Boolean(formik.errors[field])}
                       helperText={formik.touched[field] && formik.errors[field]}
                       sx={{
