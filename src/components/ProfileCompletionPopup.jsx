@@ -284,6 +284,10 @@ export default function ProfileCompletionPopup() {
                       },
                     }}
                     {...formik.getFieldProps("cateringEmail")}
+                    onChange={(e) => {
+                      e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "");
+                      formik.handleChange(e);
+                    }}
                   />
                 </div>
               )}
@@ -310,6 +314,10 @@ export default function ProfileCompletionPopup() {
                       },
                     }}
                     {...formik.getFieldProps("invoicingEmail")}
+                    onChange={(e) => {
+                      e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "");
+                      formik.handleChange(e);
+                    }}
                   />
                 </div>
               )}
@@ -322,8 +330,11 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.flightId}
                     valueName={formik.values.flightName}
                     onChange={(id, name) => { formik.setFieldValue("flightId", id); formik.setFieldValue("flightName", name); }}
-                    getOptionLabel={(opt) => opt.flightNumberName}
-                    getOptionValue={(opt) => opt.flightNumberId}
+                    getOptionLabel={(opt) => {
+                      const name = opt?.flightNumberName;
+                      return typeof name === "object" ? (name?.flightNumberName ?? "") : (name ?? "");
+                    }}
+                    getOptionValue={(opt) => opt?.flightNumberId}
                     uppercase={true}
                   />
                 </div>
@@ -449,7 +460,7 @@ export default function ProfileCompletionPopup() {
                     }}
                     {...formik.getFieldProps("groundHandlerEmail")}
                     onChange={(e) => {
-                      e.target.value = e.target.value.toUpperCase();
+                      e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
                       formik.handleChange(e);
                     }}
                   />
@@ -479,7 +490,7 @@ export default function ProfileCompletionPopup() {
                     }}
                     {...formik.getFieldProps("groundHandlerPhone")}
                     onChange={(e) => {
-                      e.target.value = e.target.value.toUpperCase();
+                      e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
                       formik.handleChange(e);
                     }}
                   />
@@ -494,6 +505,7 @@ export default function ProfileCompletionPopup() {
                   <CustomLookup
                     options={payTypes || []}
                     value={formik.values.paymentMethodId}
+                    readOnly={true}
                     onChange={(val) => {
                       formik.setFieldValue("paymentMethodId", val);
                       const selectedOpt = payTypes?.find(p => p.cashTransactionTypeId === val);
@@ -530,7 +542,7 @@ export default function ProfileCompletionPopup() {
                       fullWidth
                       {...formik.getFieldProps(field)}
                       onChange={(e) => {
-                        e.target.value = e.target.value.toUpperCase();
+                        e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
                         formik.handleChange(e);
                       }}
                       error={formik.touched[field] && Boolean(formik.errors[field])}

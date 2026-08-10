@@ -26,6 +26,8 @@ const CustomLookup = ({
   placeholder,
   addButtonLabel = "Add New",
   disabled = false,
+  readOnly = false,
+  compact = false,
   defaultLabel = "",
 }) => {
   const [inputValue, setInputValue] = useState(defaultLabel);
@@ -59,10 +61,10 @@ const CustomLookup = ({
     if (!input) return options;
 
     return options
-      .filter((opt) => getOptionLabel(opt).toLowerCase().includes(input))
+      .filter((opt) => String(getOptionLabel(opt) ?? "").toLowerCase().includes(input))
       .sort((a, b) => {
-        const aLabel = getOptionLabel(a).toLowerCase();
-        const bLabel = getOptionLabel(b).toLowerCase();
+        const aLabel = String(getOptionLabel(a) ?? "").toLowerCase();
+        const bLabel = String(getOptionLabel(b) ?? "").toLowerCase();
 
         const aStarts = aLabel.startsWith(input);
         const bStarts = bLabel.startsWith(input);
@@ -75,7 +77,7 @@ const CustomLookup = ({
   }, [options, inputValue, getOptionLabel, isTyping]);
 
   const handleInputChange = (e) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value.replace(/[\u0600-\u06FF]/g, "");
     setInputValue(newValue);
     setIsTyping(true);
     if (!newValue) {
@@ -85,8 +87,9 @@ const CustomLookup = ({
   };
 
   const handleSelect = (option) => {
-    onChange(getOptionValue(option), getOptionLabel(option));
-    setInputValue(getOptionLabel(option));
+    const label = String(getOptionLabel(option) ?? "");
+    onChange(getOptionValue(option), label);
+    setInputValue(label);
     setIsTyping(false);
     setIsOpen(false);
   };
@@ -110,8 +113,11 @@ const CustomLookup = ({
           onFocus={(e) => {
             if (!disabled) {
               setIsOpen(true);
-              e.target.select();
+              if (!readOnly) e.target.select();
             }
+          }}
+          onClick={() => {
+            if (readOnly && !disabled) setIsOpen(true);
           }}
           size="small"
           error={error}
@@ -121,10 +127,10 @@ const CustomLookup = ({
           autoComplete="new-password"
           sx={{
             "& .MuiOutlinedInput-root": {
-              borderRadius: "24px",
+              borderRadius: compact ? "50px" : "24px",
               backgroundColor: "var(--color-bg-box)",
-              height: "38px",
-              fontSize: "14px",
+              height: compact ? "30px" : "38px",
+              fontSize: compact ? "12px" : "14px",
               paddingRight: inputValue ? "4px" : undefined,
             },
             "& .MuiInputBase-input": {
@@ -132,9 +138,9 @@ const CustomLookup = ({
               padding: "0 12px",
             },
             "& .MuiInputLabel-root": {
-              fontSize: "14px",
+              fontSize: compact ? "12px" : "14px",
               lineHeight: "14px",
-              transform: "translate(14px, 12px) scale(1)",
+              transform: compact ? "translate(14px, 8px) scale(1)" : "translate(14px, 12px) scale(1)",
               "&.Mui-focused, &.MuiInputLabel-shrink": {
                 transform: "translate(14px, -12px) scale(0.75)",
               },
@@ -142,6 +148,8 @@ const CustomLookup = ({
           }}
           slotProps={{
             input: {
+              readOnly: readOnly,
+              sx: readOnly ? { cursor: "pointer", caretColor: "transparent" } : {},
               endAdornment: inputValue && !disabled ? (
                 <InputAdornment position="end">
                   <IconButton

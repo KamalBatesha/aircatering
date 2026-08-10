@@ -16,7 +16,7 @@ const FormObserver = ({ currencyList, setFieldValue }) => {
    useEffect(() => {
       if (!didSetCurrency.current && currencyList?.length) {
          // Case-insensitive USD match, fall back to first currency if not found
-         const usd = currencyList.find((c) => c.currencyName?.toUpperCase() === "USD")
+         const usd = currencyList?.find((c) => c.currencyName?.toUpperCase() === "USD")
             || currencyList[0];
          if (usd?.currencyId != null) {
             setFieldValue("paymentCurrency", usd.currencyId);
@@ -51,6 +51,7 @@ const FreeTextLookup = ({
    error,
    placeholder,
    disabled = false,
+   uppercase = false,
    onBlur,
 }) => {
    const [inputValue, setInputValue] = useState("");
@@ -70,10 +71,10 @@ const FreeTextLookup = ({
       if (!input) return options;
 
       return options
-         .filter((opt) => getOptionLabel(opt).toLowerCase().includes(input))
-         .sort((a, b) => {
-            const aLabel = getOptionLabel(a).toLowerCase();
-            const bLabel = getOptionLabel(b).toLowerCase();
+         ?.filter((opt) => String(getOptionLabel(opt) ?? "").toLowerCase().includes(input))
+         ?.sort((a, b) => {
+            const aLabel = String(getOptionLabel(a) ?? "").toLowerCase();
+            const bLabel = String(getOptionLabel(b) ?? "").toLowerCase();
 
             const aStarts = aLabel.startsWith(input);
             const bStarts = bLabel.startsWith(input);
@@ -86,17 +87,18 @@ const FreeTextLookup = ({
    }, [options, inputValue, getOptionLabel, isTyping]);
 
    const handleInputChange = (e) => {
-      const newValue = e.target.value;
+      let newValue = e.target.value.replace(/[\u0600-\u06FF]/g, "");
+      if (uppercase) newValue = newValue.toUpperCase();
       setInputValue(newValue);
       setIsTyping(true);
       if (!newValue) {
          onChange(null, "");
       } else {
-         const matchedOption = options.find(
-            (opt) => getOptionLabel(opt).toLowerCase() === newValue.trim().toLowerCase()
+         const matchedOption = options?.find(
+            (opt) => String(getOptionLabel(opt) ?? "").toLowerCase() === newValue.trim().toLowerCase()
          );
          if (matchedOption) {
-            onChange(getOptionValue(matchedOption), getOptionLabel(matchedOption));
+            onChange(getOptionValue(matchedOption), String(getOptionLabel(matchedOption) ?? ""));
          } else {
             onChange(0, newValue);
          }
@@ -105,8 +107,9 @@ const FreeTextLookup = ({
    };
 
    const handleSelect = (option) => {
-      onChange(getOptionValue(option), getOptionLabel(option));
-      setInputValue(getOptionLabel(option));
+      const label = String(getOptionLabel(option) ?? "");
+      onChange(getOptionValue(option), label);
+      setInputValue(label);
       setIsTyping(false);
       setIsOpen(false);
    };
@@ -221,14 +224,14 @@ const FreeTextLookup = ({
                   }}
                >
                   <MenuList dense sx={{ overflowY: "auto", flex: 1, p: 0 }}>
-                     {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
+                     {filteredOptions?.length > 0 ? (
+                        filteredOptions?.map((option) => (
                            <MenuItem
                               key={getOptionValue(option)}
                               onClick={() => handleSelect(option)}
                               sx={{ fontSize: "12px" }}
                            >
-                              {getOptionLabel(option)}
+                              {String(getOptionLabel(option) ?? "")}
                            </MenuItem>
                         ))
                      ) : (
@@ -491,7 +494,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       { id: 'clientAndPayment', label: langText.clientAndPayment[lang].replace(/^\d+\.\s*/, ''), schema: Step3Schema },
    ];
 
-   const validationSchemas = stepsConfig.map(s => s.schema);
+   const validationSchemas = stepsConfig?.map(s => s.schema);
    const { data: stations } = useQuery({ queryKey: ["stations"], queryFn: GetStationsList, enabled: isOpen });
    const { data: priceLists } = useQuery({ queryKey: ["priceLists"], queryFn: GetHeaderPriceList, enabled: isOpen });
    const { data: flightNumbers } = useQuery({ queryKey: ["flightNumbers"], queryFn: getMyFlightNumbers, enabled: isOpen });
@@ -632,36 +635,6 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
 
             queryClient.invalidateQueries({ queryKey: ["myOrders"] });
 
-            const original = originalProfileSettings.current;
-            if (original) {
-               const updatedSettings = { ...original };
-               let hasUpdates = false;
-
-               if (original.flightId == null && values.flightNumber) {
-                  updatedSettings.flightId = values.flightNumber;
-                  hasUpdates = true;
-               }
-               if (original.registrationId == null && values.registration) {
-                  updatedSettings.registrationId = values.registration;
-                  hasUpdates = true;
-               }
-               if (original.airCraftId == null && values.aircraftType) {
-                  updatedSettings.airCraftId = values.aircraftType;
-                  hasUpdates = true;
-               }
-               if (original.paymentMethodId == null && values.paymentMethod) {
-                  updatedSettings.paymentMethodId = values.paymentMethod;
-                  hasUpdates = true;
-               }
-               if (original.billToId == null && values.billTo) {
-                  updatedSettings.billToId = values.billTo;
-                  hasUpdates = true;
-               }
-
-               if (hasUpdates) {
-                  updateProfileSettingsMutation.mutate(updatedSettings);
-               }
-            }
 
             onClose();
             actions.resetForm();
@@ -781,7 +754,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                   }) => (
                      <>
                         <div className="flex justify-evenly bg-gray-50 border-b border-gray-100 p-4 shrink-0">
-                           {stepsConfig.map((s, idx) => {
+                           {stepsConfig?.map((s, idx) => {
                               const isCurrent = step === idx;
                               const isPast = idx < step;
                               const isNext = idx === step + 1;
@@ -830,6 +803,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <CustomLookup
                                           options={stations || []}
                                           value={values.station}
+                                          compact={true}
                                           onChange={(val) => {
                                              setFieldValue("station", val);
                                              const found = stations?.find(
@@ -907,8 +881,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              setFieldValue("flightNumberName", name);
                                              setFieldTouched("flightNumberName", true, false);
                                           }}
-                                          getOptionLabel={(opt) => opt.flightNumberName}
-                                          getOptionValue={(opt) => opt.flightNumberId}
+                                          getOptionLabel={(opt) => {
+                                             const name = opt?.flightNumberName;
+                                             return typeof name === "object" ? (name?.flightNumberName ?? "") : (name ?? "");
+                                          }}
+                                          getOptionValue={(opt) => opt?.flightNumberId}
+                                          uppercase={true}
                                           error={
                                              touched.flightNumberName && Boolean(errors.flightNumberName)
                                           }
@@ -931,11 +909,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              valueName={values.registrationName}
                                              onChange={(id, name) => {
                                                 setFieldValue("registration", id);
-                                                setFieldValue("registrationName", name);
+                                                setFieldValue("registrationName", name.replace(/[\u0600-\u06FF]/g, ""));
                                                 setFieldTouched("registrationName", true, false);
                                              }}
                                              getOptionLabel={(opt) => opt.registrationName}
                                              getOptionValue={(opt) => opt.registrationId}
+                                             uppercase={true}
                                              error={
                                                 touched.registrationName && Boolean(errors.registrationName)
                                              }
@@ -1036,11 +1015,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           valueName={values.aircraftTypeName}
                                           onChange={(id, name) => {
                                              setFieldValue("aircraftType", id);
-                                             setFieldValue("aircraftTypeName", name);
+                                             setFieldValue("aircraftTypeName", name.replace(/[\u0600-\u06FF]/g, ""));
                                              setFieldTouched("aircraftTypeName", true, false);
                                           }}
                                           getOptionLabel={(opt) => opt.airCraftName}
                                           getOptionValue={(opt) => opt.airCraftId}
+                                          uppercase={true}
                                           error={touched.aircraftTypeName && Boolean(errors.aircraftTypeName)}
                                           onBlur={() => setFieldTouched("aircraftTypeName", true, false)}
                                        />
@@ -1064,7 +1044,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           valueName={values.billToName}
                                           onChange={(id, name) => {
                                              setFieldValue("billTo", id);
-                                             setFieldValue("billToName", name);
+                                             setFieldValue("billToName", name.replace(/[\u0600-\u06FF]/g, ""));
                                              setFieldTouched("billToName", true, false);
                                           }}
                                           getOptionLabel={(opt) => opt.billToName}
@@ -1076,15 +1056,21 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                     </div>
                                     <div className="col-span-1">
                                        <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Invoice To * <HelpTooltip text={fieldDescriptions.invoiceTo[lang]} /></label>
-                                       <CustomLookup
-                                          options={invoiceTo || []}
-                                          value={values.invoiceTo}
-                                          onChange={(val) => { setFieldValue("invoiceTo", val); setFieldTouched("invoiceTo", true, false); }}
-                                          getOptionLabel={(opt) => opt.invoicingToName}
-                                          getOptionValue={(opt) => opt.invoicingToId}
-                                          error={touched.invoiceTo && Boolean(errors.invoiceTo)}
-                                          onBlur={() => setFieldTouched("invoiceTo", true, false)}
-                                       />
+                                       <div className="relative">
+                                          <select
+                                             value={values.invoiceTo ?? ""}
+                                             onChange={(e) => { setFieldValue("invoiceTo", e.target.value ? Number(e.target.value) : null); setFieldTouched("invoiceTo", true, false); }}
+                                             onBlur={() => setFieldTouched("invoiceTo", true, false)}
+                                             className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.invoiceTo && errors.invoiceTo ? "border-red-400" : "border-gray-300"}`}
+                                          >
+                                             <option value="" disabled hidden />
+                                             {(invoiceTo || []).map((opt) => (
+                                                <option key={opt.invoicingToId} value={opt.invoicingToId}>
+                                                   {opt.invoicingToName}
+                                                </option>
+                                             ))}
+                                          </select>
+                                       </div>
                                        {touched.invoiceTo && errors.invoiceTo && <div className="text-red-500 text-xs mt-1">{errors.invoiceTo}</div>}
                                     </div>
                                     <div className="col-span-1">
@@ -1119,7 +1105,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.paymentCurrency && errors.paymentCurrency ? "border-red-400" : "border-gray-300"}`}
                                           >
                                              <option value="" disabled hidden />
-                                             {currencyList?.filter((c) => c.currencyName?.toUpperCase() === "USD").map((c) => (
+                                             {currencyList?.filter((c) => c.currencyName?.toUpperCase() === "USD")?.map((c) => (
                                                 <option key={c.currencyId} value={c.currencyId}>{c.currencyName}</option>
                                              ))}
                                           </select>
@@ -1135,7 +1121,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              valueName={values.agentName}
                                              onChange={(id, name) => {
                                                 setFieldValue("agent", id);
-                                                setFieldValue("agentName", name);
+                                                setFieldValue("agentName", name.replace(/[\u0600-\u06FF]/g, ""));
                                                 setFieldTouched("agentName", true, false);
                                              }}
                                              getOptionLabel={(opt) => opt.agentName}
@@ -1159,7 +1145,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              valueName={values.operatorName}
                                              onChange={(id, name) => {
                                                 setFieldValue("operator", id);
-                                                setFieldValue("operatorName", name);
+                                                setFieldValue("operatorName", name.replace(/[\u0600-\u06FF]/g, ""));
                                                 setFieldTouched("operatorName", true, false);
                                              }}
                                              getOptionLabel={(opt) => opt.operatorName}
@@ -1192,7 +1178,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 valueName={values.orderHeadearGroundHandlerName}
                                                 onChange={(id, name) => {
                                                    setFieldValue("orderHeadearGroundHandlerId", id);
-                                                   setFieldValue("orderHeadearGroundHandlerName", name);
+                                                   setFieldValue("orderHeadearGroundHandlerName", name.replace(/[\u0600-\u06FF]/g, ""));
                                                    const matched = groundHandlerList?.find(g => g.groundHandlerId === id);
                                                    if (matched) {
                                                       setFieldValue("orderHeadearGroundHandlerEmail", matched.groundHandlerEmail || "");
@@ -1217,7 +1203,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 type="email"
                                                 className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${errors.orderHeadearGroundHandlerEmail && touched.orderHeadearGroundHandlerEmail ? "border-red-500" : "border-gray-300"}`}
                                                 value={values.orderHeadearGroundHandlerEmail || ""}
-                                                onChange={(e) => setFieldValue("orderHeadearGroundHandlerEmail", e.target.value)}
+                                                onChange={(e) => setFieldValue("orderHeadearGroundHandlerEmail", e.target.value.replace(/[\u0600-\u06FF]/g, ""))}
                                                 onBlur={() => setFieldTouched("orderHeadearGroundHandlerEmail", true, false)}
                                              />
                                              {touched.orderHeadearGroundHandlerEmail && errors.orderHeadearGroundHandlerEmail && (
@@ -1232,7 +1218,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 type="text"
                                                 className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${errors.orderHeadearGroundHandlerPhone && touched.orderHeadearGroundHandlerPhone ? "border-red-500" : "border-gray-300"}`}
                                                 value={values.orderHeadearGroundHandlerPhone || ""}
-                                                onChange={(e) => setFieldValue("orderHeadearGroundHandlerPhone", e.target.value)}
+                                                onChange={(e) => setFieldValue("orderHeadearGroundHandlerPhone", e.target.value.replace(/[\u0600-\u06FF]/g, ""))}
                                                 onBlur={() => setFieldTouched("orderHeadearGroundHandlerPhone", true, false)}
                                              />
                                              {touched.orderHeadearGroundHandlerPhone && errors.orderHeadearGroundHandlerPhone && (

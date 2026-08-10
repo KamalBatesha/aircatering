@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useLangStore } from "../store/langStore";
 import { useScreenViewStore } from "../store/screenViewStore";
@@ -262,8 +262,35 @@ function AuthChecker() {
 
   const { showGreeting } = useGreetingStore();
   const { subscribeMutation } = useAuthMutation();
-  const { setUserData } = useAuthStore();
+  const { setUserData, logout } = useAuthStore();
   const hasCheckedNewsletter = useRef(false);
+  const navigate = useNavigate();
+
+  // Listen for forced logout triggered by axios when refresh token expires
+  useEffect(() => {
+    const handleForcedLogout = () => {
+      logout();
+      navigate("/login");
+    };
+    window.addEventListener("auth:logout", handleForcedLogout);
+    return () => window.removeEventListener("auth:logout", handleForcedLogout);
+  }, [logout, navigate]);
+
+  // Re-check token expiry whenever the user returns to the tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkTokenExpiration(logout);
+      }
+    };
+    const handleFocus = () => checkTokenExpiration(logout);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [logout]);
 
   // Get current user data from store/localstorage
   const { user: currentUser } = useAuthStore();

@@ -31,10 +31,10 @@ export default function FreeTextLookup({
     if (!input) return options;
 
     return options
-      .filter((opt) => getOptionLabel(opt).toLowerCase().includes(input))
+      .filter((opt) => String(getOptionLabel(opt) ?? "").toLowerCase().includes(input))
       .sort((a, b) => {
-        const aLabel = getOptionLabel(a).toLowerCase();
-        const bLabel = getOptionLabel(b).toLowerCase();
+        const aLabel = String(getOptionLabel(a) ?? "").toLowerCase();
+        const bLabel = String(getOptionLabel(b) ?? "").toLowerCase();
 
         const aStarts = aLabel.startsWith(input);
         const bStarts = bLabel.startsWith(input);
@@ -47,7 +47,7 @@ export default function FreeTextLookup({
   }, [options, inputValue, getOptionLabel, isTyping]);
 
   const handleInputChange = (e) => {
-    let newValue = e.target.value;
+    let newValue = e.target.value.replace(/[\u0600-\u06FF]/g, "");
     if (uppercase) {
       newValue = newValue.toUpperCase();
     }
@@ -57,10 +57,10 @@ export default function FreeTextLookup({
       onChange(null, "");
     } else {
       const matchedOption = options.find(
-        (opt) => getOptionLabel(opt).toLowerCase() === newValue.trim().toLowerCase()
+        (opt) => String(getOptionLabel(opt) ?? "").toLowerCase() === newValue.trim().toLowerCase()
       );
       if (matchedOption) {
-        onChange(getOptionValue(matchedOption), getOptionLabel(matchedOption));
+        onChange(getOptionValue(matchedOption), String(getOptionLabel(matchedOption) ?? ""));
       } else {
         onChange(0, newValue);
       }
@@ -69,8 +69,9 @@ export default function FreeTextLookup({
   };
 
   const handleSelect = (option) => {
-    onChange(getOptionValue(option), getOptionLabel(option));
-    setInputValue(getOptionLabel(option));
+    const label = String(getOptionLabel(option) ?? "");
+    onChange(getOptionValue(option), label);
+    setInputValue(label);
     setIsTyping(false);
     setIsOpen(false);
   };

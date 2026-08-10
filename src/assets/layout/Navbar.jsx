@@ -40,7 +40,7 @@ function Navbar() {
   const unreadCount = getUnreadCount();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const { availableStations, selectedStation, setSelectedStation, setAvailableStations } = useStationStore();
-  const { data: stations } = useQuery({ queryKey: ["stations"], queryFn: GetStationsList });
+  const { data: stations } = useQuery({ queryKey: ["stations", !!user], queryFn: GetStationsList, enabled: !!user });
   useEffect(() => {
     console.log("availableStations", stations);
 
@@ -73,7 +73,9 @@ function Navbar() {
   function handelLogOut() {
     logout();
     clearCart();
-    go("/");
+    setAvailableStations([]);
+    setSelectedStation(null);
+    go("/login");
   }
 
   // helper to navigate and close mobile menu

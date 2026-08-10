@@ -212,6 +212,15 @@ function Menu({ scrollToItemId, orderDetails }) {
   const [isFavoriteItems, setIsFavoriteItems] = useState(false);
   const [showAllFavorites, setShowAllFavorites] = useState(false);
 
+  // Fallback to basic menu if the user removes their last favorite item while viewing favorites
+  useEffect(() => {
+    if (isFavoriteItems && favouriteIdsData?.length === 0) {
+      setIsFavoriteItems(false);
+      setSelectedMenuHeaderId(null);
+      setShowAllFavorites(false);
+    }
+  }, [isFavoriteItems, favouriteIdsData]);
+
   // Endpoint configuration — all three endpoints receive menuHeaderId when set
   const GROUPS_SUBGROUPS_URL = useMemo(() => {
     const params = new URLSearchParams();
@@ -234,7 +243,8 @@ function Menu({ scrollToItemId, orderDetails }) {
   const SEARCH_URL = useMemo(() => (query) => {
     const params = new URLSearchParams();
     params.append('keyword', query);
-    if (selectedStation?.stationId) params.append('stationId', selectedStation.stationId);
+    const stationId = typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation;
+    if (stationId) params.append('stationId', stationId);
     if (selectedMenuHeaderId != null) params.append('menuHeaderId', selectedMenuHeaderId);
     if (isFavoriteItems) params.append('favItems', true);
     return `/api/AirCatering/MenuItemsSearch?${params.toString()}`;
@@ -281,25 +291,27 @@ function Menu({ scrollToItemId, orderDetails }) {
 
   // 2. Fetch items for selected subgroup
   const { data: subgroupItems, isLoading: isItemsLoading } = useQuery({
-    queryKey: ["subgroup-items", selectedSubgroup?.subGroupID, selectedStation?.stationId, selectedMainGroupID, selectedMenuHeaderId, isFavoriteItems],
+    queryKey: ["subgroup-items", selectedSubgroup?.subGroupID, typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation, selectedMainGroupID, selectedMenuHeaderId, isFavoriteItems],
     queryFn: async () => {
       if (!selectedSubgroup) return [];
-      const url = SUBGROUP_ITEMS_URL(selectedMainGroupID, selectedSubgroup?.subGroupID, selectedStation?.stationId);
+      const stationId = typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation;
+      const url = SUBGROUP_ITEMS_URL(selectedMainGroupID, selectedSubgroup?.subGroupID, stationId);
       const res = await axiosInstance.get(url);
       return res.data;
     },
-    enabled: !!selectedSubgroup && !!selectedMainGroupID && !debouncedSearch.trim() && !showAllFavorites,
+    enabled: !!selectedSubgroup && !!selectedMainGroupID && !debouncedSearch.trim() && !showAllFavorites && !!selectedStation,
   });
 
   // 2b. Fetch ALL favourites (grandGroupId=0, groupId=0)
   const { data: allFavouritesData, isLoading: isAllFavLoading } = useQuery({
-    queryKey: ["all-favourites", selectedStation?.stationId, selectedMenuHeaderId],
+    queryKey: ["all-favourites", typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation, selectedMenuHeaderId],
     queryFn: async () => {
-      const url = SUBGROUP_ITEMS_URL(0, 0, selectedStation?.stationId);
+      const stationId = typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation;
+      const url = SUBGROUP_ITEMS_URL(0, 0, stationId);
       const res = await axiosInstance.get(url);
       return res.data;
     },
-    enabled: showAllFavorites && isFavoriteItems,
+    enabled: showAllFavorites && isFavoriteItems && !!selectedStation,
   });
   useEffect(() => {
     console.log("allFavouritesData", allFavouritesData);
@@ -776,16 +788,14 @@ function Menu({ scrollToItemId, orderDetails }) {
                       setSelectedSubgroup(null);
                       setSelectedMainGroup(null);
                     }}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 flex items-center justify-between gap-2 ${
-                      showAllFavorites
-                        ? 'bg-primary/10 text-primary border-l-[3px] border-primary shadow-sm'
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-slate-700 border-l-[3px] border-transparent'
-                    }`}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 flex items-center justify-between gap-2 ${showAllFavorites
+                      ? 'bg-primary/10 text-primary border-l-[3px] border-primary shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-slate-700 border-l-[3px] border-transparent'
+                      }`}
                   >
                     <span className="truncate">{lang === 'AR' ? 'الكل' : 'All'}</span>
-                    <span className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      showAllFavorites ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'
-                    }`}>
+                    <span className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${showAllFavorites ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'
+                      }`}>
                       {favouriteIdsData?.length ?? 0}
                     </span>
                   </button>
@@ -925,12 +935,12 @@ function Menu({ scrollToItemId, orderDetails }) {
 
         {/* Customer Menu Header Filter Buttons */}
         {user && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap w-full gap-2">
             {
               (favouriteIdsData?.length > 0 || customerMenus?.[0]?.customerMenuHeaders?.length > 0) &&
               <button
                 onClick={() => { setSelectedMenuHeaderId(null); setIsFavoriteItems(false); setShowAllFavorites(false); }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === null && isFavoriteItems === false
+                className={`flex-1 min-w-[150px] md:min-w-[25%] flex items-center justify-center px-4 h-[42px] rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === null && isFavoriteItems === false
                   ? 'bg-primary text-white border-primary shadow-sm'
                   : 'bg-white text-secondary border-gray-200 hover:border-primary hover:text-primary'
                   }`}
@@ -942,19 +952,19 @@ function Menu({ scrollToItemId, orderDetails }) {
               <button
                 key={header.customerMenuHeaderId}
                 onClick={() => { setSelectedMenuHeaderId(header.customerMenuHeaderId); setIsFavoriteItems(false) }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === header.customerMenuHeaderId && isFavoriteItems === false
+                className={`flex-1 min-w-[150px] md:min-w-[25%] flex items-center justify-center px-4 h-[42px] rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === header.customerMenuHeaderId && isFavoriteItems === false
                   ? 'bg-primary text-white border-primary shadow-sm'
                   : 'bg-white text-secondary border-gray-200 hover:border-primary hover:text-primary'
                   }`}
               >
                 {/* {header.customerMenuHeaderStationName || header.customerMenuHeaderCustomerName || `#${header.customerMenuHeaderId}`} */}
-                {`${user?.firstName}'s Menu ${i + 1}`}
+                {`Special Menu ${i + 1}`}
               </button>
             ))}
             {favouriteIdsData?.length > 0 && (
               <button
                 onClick={() => { setIsFavoriteItems(true); setShowAllFavorites(false); }}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === null && isFavoriteItems === true
+                className={`flex-1 min-w-[150px] md:min-w-[25%] flex items-center justify-center gap-1.5 px-4 h-[42px] rounded-full text-sm font-semibold transition-all border ${selectedMenuHeaderId === null && isFavoriteItems === true
                   ? 'bg-primary text-white border-primary shadow-sm'
                   : 'bg-white text-secondary border-gray-200 hover:border-primary hover:text-primary'
                   }`}
