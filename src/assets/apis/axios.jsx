@@ -119,9 +119,11 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
-        localStorage.removeItem("user");
-        // Dispatch event so the app can clean up Zustand state and redirect
-        window.dispatchEvent(new Event("auth:logout"));
+        if (localStorage.getItem("user")) {
+          localStorage.removeItem("user");
+          // Dispatch event so the app can clean up Zustand state and redirect
+          window.dispatchEvent(new Event("auth:logout"));
+        }
         return Promise.reject(refreshError);
       }
     }

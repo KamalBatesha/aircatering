@@ -274,8 +274,9 @@ function Summary() {
                     formik.setFieldValue("flightId", id);
                     formik.setFieldValue("flightName", name);
                   }}
-                  getOptionLabel={(opt) => opt.flightNumberName}
+                  getOptionLabel={(opt) => typeof opt.flightNumberName === 'object' ? opt.flightNumberName?.flightNumberName : opt.flightNumberName}
                   getOptionValue={(opt) => opt.flightNumberId}
+                  uppercase={true}
                 />
               </div>
 
@@ -293,6 +294,7 @@ function Summary() {
                   }}
                   getOptionLabel={(opt) => opt.registrationName}
                   getOptionValue={(opt) => opt.registrationId}
+                  uppercase={true}
                 />
               </div>
 
@@ -310,6 +312,7 @@ function Summary() {
                   }}
                   getOptionLabel={(opt) => opt.airCraftName}
                   getOptionValue={(opt) => opt.airCraftId}
+                  uppercase={true}
                 />
               </div>
 
@@ -320,6 +323,7 @@ function Summary() {
                 <CustomLookup
                   options={payTypes || []}
                   value={formik.values.paymentMethodId}
+                  readOnly={true}
                   onChange={(val) => {
                     formik.setFieldValue("paymentMethodId", val);
                     const selectedOpt = payTypes?.find(p => p.cashTransactionTypeId === val);

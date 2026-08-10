@@ -291,15 +291,15 @@ function Menu({ scrollToItemId, orderDetails }) {
 
   // 2. Fetch items for selected subgroup
   const { data: subgroupItems, isLoading: isItemsLoading } = useQuery({
-    queryKey: ["subgroup-items", selectedSubgroup?.subGroupID, typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation, selectedMainGroupID, selectedMenuHeaderId, isFavoriteItems],
+    queryKey: ["subgroup-items", selectedSubgroup?.subGroupID, user ? (typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation) : 1, selectedMainGroupID, selectedMenuHeaderId, isFavoriteItems],
     queryFn: async () => {
       if (!selectedSubgroup) return [];
-      const stationId = typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation;
+      const stationId = user ? (typeof selectedStation === 'object' ? selectedStation?.stationId : selectedStation) : 1;
       const url = SUBGROUP_ITEMS_URL(selectedMainGroupID, selectedSubgroup?.subGroupID, stationId);
       const res = await axiosInstance.get(url);
       return res.data;
     },
-    enabled: !!selectedSubgroup && !!selectedMainGroupID && !debouncedSearch.trim() && !showAllFavorites && !!selectedStation,
+    enabled: !!selectedSubgroup && !!selectedMainGroupID && !debouncedSearch.trim() && !showAllFavorites,
   });
 
   // 2b. Fetch ALL favourites (grandGroupId=0, groupId=0)
@@ -311,7 +311,7 @@ function Menu({ scrollToItemId, orderDetails }) {
       const res = await axiosInstance.get(url);
       return res.data;
     },
-    enabled: showAllFavorites && isFavoriteItems && !!selectedStation,
+    enabled: showAllFavorites && isFavoriteItems,
   });
   useEffect(() => {
     console.log("allFavouritesData", allFavouritesData);
