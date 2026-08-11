@@ -48,7 +48,7 @@ export function UpdateOrderDetails(data) {
 
 export function DeleteOrderItemAirCatering(detailId) {
     return axiosInstance
-        .delete(`/api/AirCatering/DeleteOrderItemAirCatering?DetailId=${detailId}`)
+        .delete(`/api/AirCatering/DeleteOrderItemAirCatering?DetailId=${detailId}&MenuId=0`)
         .then((response) => {
             return response.data || response;
         })

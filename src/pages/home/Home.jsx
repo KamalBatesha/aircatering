@@ -3,7 +3,7 @@ import { langText, toArabicNumbers } from '../../assets/constants/lang'
 import { onlineOrderToast } from '../../assets/Helpers/onlineOrderToast';
 import { useLangStore } from '../../assets/store/langStore';
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPlus, FaLock, FaMinus, FaUtensils, FaShippingFast, FaStar, FaClock, FaRegBell, FaShoppingCart, FaChevronDown, FaChevronLeft, FaChevronRight, FaPlane, FaTag, FaBuilding, FaMapMarkerAlt, FaUsers } from "react-icons/fa";
+import { FaPlus, FaLock, FaMinus, FaUtensils, FaShippingFast, FaStar, FaClock, FaRegBell, FaShoppingCart, FaChevronDown, FaChevronLeft, FaChevronRight, FaPlane, FaTag, FaBuilding, FaMapMarkerAlt, FaUsers, FaTrash } from "react-icons/fa";
 import { FiCalendar } from "react-icons/fi";
 import { MdAirplanemodeActive, MdDeliveryDining } from "react-icons/md";
 import { IoMdClose } from 'react-icons/io';
@@ -16,6 +16,7 @@ import CreateOrderModal from '../../components/CreateOrderModal';
 import Review from '../../components/Review';
 import useAuthStore from '../../assets/store/authStore';
 import { getMyOrders, getOrderDetails } from '../../assets/apis/order/OrderApi';
+import { DeleteOrderItemAirCatering } from '../../assets/apis/product/PeoductApi';
 import { useQuery } from '@tanstack/react-query';
 import { useNotificationStore } from '../../assets/store/notificationStore';
 import { UpdateNotification } from '../../assets/apis/notifications/Notifications';
@@ -54,6 +55,16 @@ function Home() {
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const { selectedStation, setSelectedStation } = useStationStore();
   const ordersScrollRef = useRef(null);
+
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: (detailId) => DeleteOrderItemAirCatering(detailId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orderDetails', selectedOrder?.orderHeaderId] });
+      queryClient.invalidateQueries({ queryKey: ['myOrders'] });
+    },
+  });
 
   const { data: myOrders, isLoading } = useQuery({
     queryKey: ['myOrders', "active"],
@@ -196,10 +207,11 @@ function Home() {
           })}
         </div>}
         <div className="grid grid-cols-14 gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-[#F0F0F0] shrink-0">
-          <div className="col-span-5">{lang === 'AR' ? 'العنصر' : 'Item'}</div>
+          <div className="col-span-4">{lang === 'AR' ? 'العنصر' : 'Item'}</div>
           <div className="col-span-3 text-center">{lang === 'AR' ? 'الكمية' : 'Quantity'}</div>
           <div className="col-span-3 text-right">{lang === 'AR' ? 'سعر الوحدة' : 'Unit Price'}</div>
           <div className="col-span-3 text-right">{lang === 'AR' ? 'السعر' : 'Total Price'}</div>
+          <div className="col-span-1"></div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
           {(orderDetailsLoading || orderDetailsFetching) ? <BiLoaderAlt className="animate-spin mx-auto my-10 text-primary" size={30} /> :
@@ -216,7 +228,7 @@ function Home() {
                     const isDeparture = item.orderDetailsIsDepartur;
                     return (
                       <div key={idx} className="grid grid-cols-14 gap-2 items-center p-3 rounded-2xl border bg-[#FBFBFA] text-xs transition-all hover:shadow-sm" style={{ borderColor: '#EFEFEF' }}>
-                        <div className="col-span-5 flex flex-col gap-1 min-w-0">
+                        <div className="col-span-4 flex flex-col gap-1 min-w-0">
                           <span className="font-bold text-[#49494A] leading-tight" title={item.orderDetailsName}>
                             {item.orderDetailsName ? (item.orderDetailsName.length > 20 ? item.orderDetailsName.substring(0, 10) + '...' : item.orderDetailsName) : '—'}
                           </span>
@@ -228,6 +240,16 @@ function Home() {
                         <div className="col-span-3 text-center font-bold text-[#49494A]">{item.orderDetailsQty}</div>
                         <div className="col-span-3 text-right text-[10px] text-gray-500">${(item.orderDetailsPriceUsd || 0).toFixed(2)}</div>
                         <div className="col-span-3 text-right font-extrabold text-[#C5A76D]">${(item.orderDetailsLineTotalUsd || 0).toFixed(2)}</div>
+                        <div className="col-span-1 flex justify-center">
+                          <button
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(item.orderDetailsId)}
+                            className="w-6 h-6 rounded-lg bg-red-50 border border-red-200 hover:bg-red-100 transition flex items-center justify-center text-red-500 cursor-pointer disabled:opacity-50"
+                            title={lang === 'AR' ? 'حذف الصنف' : 'Void Item'}
+                          >
+                            <FaTrash className="text-[10px]" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
