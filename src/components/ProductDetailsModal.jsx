@@ -23,6 +23,7 @@ function ProductDetailsModal({
   removeFavouriteMutation,
   favouritedItems,
   onToggleFavourite,
+  handleAddItems
 }) {
   console.log("priceInfo", priceInfo);
 
@@ -62,109 +63,8 @@ function ProductDetailsModal({
   const totalPrice = priceInfo.price * quantity;
 
   const handleAddToCart = () => {
-    if (!user) {
-      onlineOrderToast.error(langText.pleaseLoginFirst?.[lang]);
-      navigate("/login");
-      onClose();
-      return;
-    }
-    if (!selectedOrder) {
-      onlineOrderToast.error(langText.pleaseSelectOrderOrCreateANewOne?.[lang]);
-      onClose();
-      return;
-    }
-
-    const addedQty = +quantity || 1;
-    const existingDetails = orderDetails?.[0]?.details || [];
-    const itemId = item?.ItemID || item?.itemID;
-
-    // Search for an existing item with the same itemId AND same arrival/departure flags
-    const existingItem = existingDetails.find(
-      (d) =>
-        d.orderDetailsItemId === itemId &&
-        d.orderDetailsIsArrival === isArrival &&
-        d.orderDetailsIsDepartur === isDeparture
-    );
-
-    let data;
-
-    if (existingItem) {
-      // Item found: update qty in-place, keep all other properties intact
-      const newQty = existingItem.orderDetailsQty + addedQty;
-      data = existingDetails.map((d) => {
-        if (
-          d.orderDetailsItemId === itemId &&
-          d.orderDetailsIsArrival === isArrival &&
-          d.orderDetailsIsDepartur === isDeparture
-        ) {
-          return {
-            ...d,
-            OrderDetailsHeaderId: selectedOrder?.orderHeaderId,
-            orderDetailsQty: newQty,
-            orderDetailsPrintedQty: newQty,
-          };
-        }
-        return {
-          ...d,
-          OrderDetailsHeaderId: selectedOrder?.orderHeaderId,
-        };
-      });
-    } else {
-      // Item not found: map existing items then append new one
-      const items = existingDetails.map((d) => ({
-        ...d,
-        OrderDetailsHeaderId: selectedOrder?.orderHeaderId,
-      }));
-
-      data = [
-        ...items,
-        {
-          orderDetailsId: 0,
-          OrderDetailsHeaderId: selectedOrder?.orderHeaderId,
-          orderDetailsName: item?.ItemName || item?.itemName,
-          orderDetailsItemId: itemId,
-          orderDetailsPackingId: 1,
-          orderDetailsReplaceItem: false,
-          orderDetailsSalesComment: "",
-          orderDetailsQty: addedQty,
-          orderDetailsPrintedQty: addedQty,
-          orderDetailsKitchineReply: "",
-          OrderDetailsPcking: "Standard Packing",
-          orderDetailsIsArrival: isArrival,
-          orderDetailsIsDepartur: isDeparture,
-          orderDetailsDescription: item?.itemDescription,
-          OrderDetailsCurrencyPrice: Number(item?.itemPriceUSD),
-          OrderDetailsUnitName: item?.ItemMegurment || item?.itemMegurment,
-        },
-      ];
-    }
-
-    console.log("data", data);
-
-    UpdataDetailsMutation.mutate(data, {
-      onSuccess: () => {
-        onlineOrderToast.success(langText.itemAddedSuccessfully?.[lang], { id: "1" });
-        queryClient.invalidateQueries({
-          queryKey: ["order-details", selectedOrder?.orderHeaderId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ['myOrders'],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ['orderDetails', selectedOrder?.orderHeaderId],
-        });
-      },
-      onError: (error) => {
-        console.log("error", error);
-        onlineOrderToast.error(langText.failedToAddItem?.[lang], {
-          id: "1",
-        });
-      },
-      onMutate: () => {
-        onlineOrderToast.loading(langText.addingItem?.[lang], { id: "1" });
-      }
-    });
-    onClose();
+    handleAddItems(item, quantity)
+    onClose()
   };
 
   return createPortal(
@@ -201,11 +101,10 @@ function ProductDetailsModal({
         {user && (
           <button
             onClick={(e) => onToggleFavourite(e, item)}
-            className={`absolute top-4 right-16 z-20 w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center active:scale-95 transition-all shadow-md cursor-pointer ${
-              favouritedItems?.[item?.itemID || item?.ItemID]
+            className={`absolute top-4 right-16 z-20 w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center active:scale-95 transition-all shadow-md cursor-pointer ${favouritedItems?.[item?.itemID || item?.ItemID]
                 ? "bg-red-50 text-red-500 border border-red-200"
                 : "bg-white/85 text-gray-400 hover:bg-red-50 hover:text-red-400 hover:border hover:border-red-200"
-            }`}
+              }`}
             aria-label="Add to favourites"
             title={lang === "EN" ? "Add to favourites" : "أضف إلى المفضلة"}
           >

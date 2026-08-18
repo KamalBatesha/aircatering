@@ -142,88 +142,70 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export const useCartStore = create(
-  // persist(
-  (set, get) => ({
-    cart: [],
-    deliveryFee: 0,
-    serviceFee: 0,
-    selectedOrder: null,
-    setSelectedOrder: (order) => set({ selectedOrder: order }),
-    setCart: (cart) => set({ cart }),
-    addToCart: (item) => {
-      const customId =
-        item.cartItemId ||
-        `${item.FoodMenuItemId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      item.cartItemId = customId;
-      const itemIndex = get().cart.findIndex(
-        (cartItem) =>
-          cartItem.FoodMenuItemId === item.FoodMenuItemId &&
-          cartItem.FoodMenuItemAdds?.length == 0,
-      );
-      if (
-        itemIndex !== -1 &&
-        item?.FoodMenuItemAdds?.length == 0 &&
-        get().cart[itemIndex].FoodMenuItemAdds?.length == 0
-      ) {
-        const updatedCart = [...get().cart];
-        updatedCart[itemIndex].quantity += 1;
-        set({ cart: updatedCart });
-      } else {
-        set({ cart: [...get().cart, item] });
-      }
-    },
-    addToCartWithAdds: (item) => {
-      set({ cart: [...get().cart, item] });
-    },
-    removeFromCart: (cartItemId) =>
-      set({
-        cart: get().cart.filter((item) => item.cartItemId !== cartItemId),
-      }),
-    clearCart: () => set({ cart: [] }),
-    updateQuantity: (cartItemId, quantity) =>
-      set({
-        cart:
-          quantity === 0
-            ? get().cart.filter((item) => item.cartItemId !== cartItemId)
-            : get().cart.map((item) => {
-                if (item.cartItemId === cartItemId) {
-                  const newItem = { ...item, quantity };
-                  if (newItem.selectedSubItems?.length > 0) {
-                    newItem.selectedSubItems = newItem.selectedSubItems.map(
-                      (sub) => ({
-                        ...sub,
-                        quantity,
-                      }),
-                    );
-                  }
-                  return newItem;
-                }
-                return item;
-              }),
-      }),
-    getTotalPrice: () =>
-      get().cart.reduce((total, item) => {
-        const addsTotal =
-          item?.FoodMenuItemAdds?.reduce(
-            (sum, add) => sum + add.FoodMenuItemAddsPriceEgp,
-            0,
-          ) || 0;
+  persist(
+    (set, get) => ({
+      cart: [],
+      deliveryFee: 0,
+      serviceFee: 0,
+      selectedOrder: null,
+      setSelectedOrder: (order) => set({ selectedOrder: order }),
+      setCart: (cart) => set({ cart }),
+      addToCart: (item) => {
+        const customId =
+          item.cartItemId ||
+          `${item.orderDetailsItemId || item.itemID}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        item.cartItemId = customId;
 
-        const subItemsTotal =
-          item?.selectedSubItems?.reduce(
-            (sum, sub) => sum + sub.FoodMenuItemPrice,
-            0,
-          ) || 0;
-
-        return (
-          total +
-          (item.FoodMenuItemPrice + addsTotal + subItemsTotal) * item.quantity
+        // Find if item already exists in local cart with same ID and arrival/departure flags
+        const itemIndex = get().cart.findIndex(
+          (cartItem) =>
+            cartItem.orderDetailsItemId === item.orderDetailsItemId &&
+            cartItem.orderDetailsIsArrival === item.orderDetailsIsArrival &&
+            cartItem.orderDetailsIsDepartur === item.orderDetailsIsDepartur,
         );
-      }, 0),
-    getTotalItems: () =>
-      get().cart.reduce((total, item) => total + item.quantity, 0),
-    setDeliveryFee: (deliveryFee) => set({ deliveryFee }),
-  }),
-  // { name: "cart-storage" },
-  // ),
+
+        if (itemIndex !== -1) {
+          const updatedCart = [...get().cart];
+          updatedCart[itemIndex].orderDetailsQty += item.orderDetailsQty || 1;
+          updatedCart[itemIndex].orderDetailsLineTotalUsd =
+            updatedCart[itemIndex].orderDetailsQty *
+            updatedCart[itemIndex].orderDetailsPriceUsd;
+          set({ cart: updatedCart });
+        } else {
+          set({ cart: [...get().cart, item] });
+        }
+      },
+      removeFromCart: (cartItemId) =>
+        set({
+          cart: get().cart.filter((item) => item.cartItemId !== cartItemId),
+        }),
+      clearCart: () => set({ cart: [] }),
+      updateQuantity: (cartItemId, quantity) =>
+        set({
+          cart:
+            quantity === 0
+              ? get().cart.filter((item) => item.cartItemId !== cartItemId)
+              : get().cart.map((item) => {
+                  if (item.cartItemId === cartItemId) {
+                    const newItem = { ...item, orderDetailsQty: quantity };
+                    newItem.orderDetailsLineTotalUsd =
+                      quantity * newItem.orderDetailsPriceUsd;
+                    return newItem;
+                  }
+                  return item;
+                }),
+        }),
+      getTotalPrice: () =>
+        get().cart.reduce((total, item) => {
+          return total + (item.orderDetailsLineTotalUsd || 0);
+        }, 0),
+      getTotalItems: () =>
+        get().cart.reduce(
+          (total, item) => total + (item.orderDetailsQty || 1),
+          0,
+        ),
+      setDeliveryFee: (deliveryFee) => set({ deliveryFee }),
+    }),
+    { name: "cart-storage" },
+  ),
 );

@@ -515,10 +515,22 @@ function Menu({ scrollToItemId, orderDetails }) {
   function handleAddItems(item, qty) {
     const { isArrival, isDeparture } = useProductStore.getState();
     const { selectedOrder } = useCartStore.getState();
+    const addedQty = +qty || 1;
 
     if (!user) {
-      onlineOrderToast.error(langText.pleaseLoginFirst?.[lang]);
-      navigate("/login");
+      addToCart({
+        orderDetailsId: Date.now() + Math.random(),
+        orderDetailsName: item?.ItemName || item?.itemName,
+        orderDetailsItemId: item?.itemID,
+        orderDetailsQty: addedQty,
+        orderDetailsIsArrival: isArrival,
+        orderDetailsIsDepartur: isDeparture,
+        orderDetailsPriceUsd: Number(item?.itemPriceUSD || 0),
+        orderDetailsLineTotalUsd: addedQty * Number(item?.itemPriceUSD || 0),
+        orderDetailsItemGroupName: item?.ItemGroupName || 'Other',
+        OrderDetailsUnitName: item?.itemUnit || ""
+      });
+      onlineOrderToast.success(lang === 'AR' ? 'تمت الإضافة إلى السلة المحلية' : 'Added to local cart');
       return;
     }
     if (!selectedOrder) {
@@ -526,7 +538,6 @@ function Menu({ scrollToItemId, orderDetails }) {
       return;
     }
 
-    const addedQty = +qty || 1;
     const queryKey = ['orderDetails', selectedOrder?.orderHeaderId];
 
     // 1. Read latest state directly from cache to avoid stale closures during rapid clicks
@@ -1001,19 +1012,19 @@ function Menu({ scrollToItemId, orderDetails }) {
           </div>
         </div>
 
-        {user &&
+        {/* {user &&
           selectedOrder?.orderHeaderIsArrival && selectedOrder?.orderHeaderIsDeparture &&
-          (
-            <div style={{ direction: 'ltr' }} className="flex justify-end ">
-              <div className="flex w-full">
-                <button className={`rounded-l-full px-3 py-3 border text-white flex-1 transition-all duration-300 hover:text-sm ${isArrival ? 'bg-primary' : 'bg-secondary'}`} onClick={() => setIsArrivalAndDeparture(true, false)}><span>🛬</span>
-                  {lang === 'AR' ? 'وصول' : 'Arrival'}
-                </button>
-                <button className={`rounded-r-full px-3 py-3 border border-r-0 text-white flex-1 transition-all duration-300 hover:text-sm ${isDeparture ? 'bg-primary' : 'bg-secondary'}`} onClick={() => setIsArrivalAndDeparture(false, true)}><span>🛫</span>
-                  {lang === 'AR' ? 'مغادرة' : 'Departure'}</button>
-              </div>
-            </div>
-          )}
+          ( */}
+        <div style={{ direction: 'ltr' }} className="flex justify-end ">
+          <div className="flex w-full">
+            <button className={`rounded-l-full px-3 py-3 border text-white flex-1 transition-all duration-300 hover:text-sm ${isArrival ? 'bg-primary' : 'bg-secondary'}`} onClick={() => setIsArrivalAndDeparture(true, false)}><span>🛬</span>
+              {lang === 'AR' ? 'وصول' : 'Arrival'}
+            </button>
+            <button className={`rounded-r-full px-3 py-3 border border-r-0 text-white flex-1 transition-all duration-300 hover:text-sm ${isDeparture ? 'bg-primary' : 'bg-secondary'}`} onClick={() => setIsArrivalAndDeparture(false, true)}><span>🛫</span>
+              {lang === 'AR' ? 'مغادرة' : 'Departure'}</button>
+          </div>
+        </div>
+        {/* )} */}
 
         {/* All Favourites Results */}
         {!debouncedSearch.trim() && isFavoriteItems && showAllFavorites && (
@@ -1230,6 +1241,7 @@ function Menu({ scrollToItemId, orderDetails }) {
             removeFavouriteMutation={removeFavouriteMutation}
             favouritedItems={favouritedItems}
             onToggleFavourite={handleToggleFavourite}
+            handleAddItems={handleAddItems}
           />
         )}
       </AnimatePresence>

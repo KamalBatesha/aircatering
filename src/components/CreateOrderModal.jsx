@@ -275,22 +275,35 @@ import toast from 'react-hot-toast';
 import { useStationStore } from '../assets/store/stationStore';
 import { useCartStore } from '../assets/store/cartStore';
 import { onlineOrderToast } from '../assets/Helpers/onlineOrderToast';
-import { getMyAirCrafts, getMyBillTo, getMyFlightNumbers, getMyRegistrations, GetCustomerProfileSettings, UpdateCustomerProfileSettings, SaveOrderAgainAirCatering, getMyAgent, getMyOperators } from '../assets/apis/order/OrderApi';
+import { getMyAirCrafts, getMyBillTo, getMyFlightNumbers, getMyRegistrations, GetCustomerProfileSettings, UpdateCustomerProfileSettings, SaveOrderAgainAirCatering, getMyAgent, getMyOperators, SendGuestRequest } from '../assets/apis/order/OrderApi';
 import { useNavigate } from 'react-router-dom';
 import HelpTooltip from './HelpTooltip';
 import { fieldDescriptions } from '../assets/constants/fieldDescriptions';
+import useAuthStore from '../assets/store/authStore';
+import { GetCountriesCodes } from '../assets/apis/country/Country';
 
 export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null }) {
    const navigate = useNavigate();
    const [step, setStep] = useState(0);
    const [maxReachedStep, setMaxReachedStep] = useState(0);
+   const { user } = useAuthStore();
+   const cart = useCartStore((state) => state.cart);
 
    const { lang } = useLangStore();
 
    const { data: profileSettings } = useQuery({
       queryKey: ["customerProfileSettings"],
       queryFn: GetCustomerProfileSettings,
-      enabled: isOpen,
+      enabled: isOpen && !!user,
+   });
+
+   const GuestSchema = Yup.object().shape({
+      mobil: Yup.string().required(langText.phoneNumberIsRequired[lang]),
+      email: Yup.string().required(langText.emailIsRequired[lang]).email(langText.pleaseEnterAValidEmailAddress[lang]),
+      contryID: Yup.number().required(langText.countryIsRequired[lang]),
+      companyName: Yup.string().required(langText.companyNameIsRequired[lang]),
+      companyPersonalName: Yup.string().required(langText.companyPersonalNameIsRequired[lang]),
+      companyLink: Yup.string().required(langText.companyLinkIsRequired[lang]).url(langText.invalidUrl[lang]),
    });
 
    const Step1Schema = Yup.object().shape({
@@ -469,10 +482,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
          : Yup.string(),
       orderHeadearGroundHandlerEmail: Yup.string().email(lang === "AR" ? "البريد الإلكتروني غير صالح" : "Invalid email format"),
       orderHeadearGroundHandlerPhone: Yup.string(),
-      agentName: profileSettings?.agentIsRequired === true
+      agentName: (!user || profileSettings?.agentIsRequired === true)
          ? Yup.string().required(lang === "AR" ? "الوكيل مطلوب" : "Agent Name is required")
          : Yup.string(),
-      operatorName: profileSettings?.operatorIsRequired === true
+      operatorName: (!user || profileSettings?.operatorIsRequired === true)
          ? Yup.string().required(lang === "AR" ? "المشغل مطلوب" : "Operator Name is required")
          : Yup.string(),
    });
@@ -485,16 +498,26 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       mutationFn: SaveOrderAgainAirCatering,
    });
 
+   const guestMutation = useMutation({
+      mutationFn: SendGuestRequest,
+   });
+
    const isGroundHandlerVisible = profileSettings?.groundHandlerIsVisible === true;
 
    // 3 steps: Order Details → Date & Time → Client & Payment
-   const stepsConfig = [
+   const baseStepsConfig = [
       { id: 'orderDetail', label: langText.orderDetail[lang].replace(/^\d+\.\s*/, ''), schema: Step1Schema },
       { id: 'dateTime', label: langText.dateTime[lang].replace(/^\d+\.\s*/, ''), schema: Step2Schema },
       { id: 'clientAndPayment', label: langText.clientAndPayment[lang].replace(/^\d+\.\s*/, ''), schema: Step3Schema },
    ];
 
+   const stepsConfig = user ? baseStepsConfig : [
+      { id: 'guestInfo', label: lang === "AR" ? "معلومات المستخدم" : "User Information", schema: GuestSchema },
+      ...baseStepsConfig
+   ];
+
    const validationSchemas = stepsConfig?.map(s => s.schema);
+   const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: GetCountriesCodes, enabled: isOpen && !user });
    const { data: stations } = useQuery({ queryKey: ["stations"], queryFn: GetStationsList, enabled: isOpen });
    const { data: priceLists } = useQuery({ queryKey: ["priceLists"], queryFn: GetHeaderPriceList, enabled: isOpen });
    const { data: flightNumbers } = useQuery({ queryKey: ["flightNumbers"], queryFn: getMyFlightNumbers, enabled: isOpen });
@@ -512,6 +535,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       console.log("groundHandlerList", groundHandlerList);
 
    }, [groundHandlerList])
+   useEffect(() => {
+      console.log("cart", cart);
+
+   }, [cart])
 
    const originalProfileSettings = useRef(null);
 
@@ -647,30 +674,130 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             actions.setSubmitting(false);
          };
 
-         onlineOrderToast.loading(lang == "EN" ? "Creating Order..." : "...جاري إنشاء الطلب", { id: "creatingOrder" });
-
-         if (oldOrderId) {
-            orderAgainMutation.mutate(
-               { oldOrderHeaderId: oldOrderId, newHeader: orderHeaderPayload },
-               {
-                  onSuccess: (response) => {
-                     handleSuccess(response);
-                     const newOrderData = response?.data?.[0]?.header || response?.[0]?.header;
-                     if (newOrderData?.orderHeaderId) {
-                        navigate(`/order/${newOrderData.orderHeaderId}`);
-                     }
-                  },
-                  onError: handleError
+         if (!user) {
+            const guestPayload = {
+               mobil: values.mobil,
+               password: "Sky@1234",
+               email: values.email,
+               contryID: values.contryID,
+               companyName: values.companyName,
+               companyPersonalName: values.companyPersonalName,
+               subscribe: true,
+               companyAddetionalInfo: "",
+               companyWebSite: values.companyLink,
+               quatationVM: orderHeaderPayload,
+               _detailsQT: cart?.map((item) => ({
+                  orderDetailsId: 0,
+                  // orderDetailsHeaderId: 0,
+                  orderDetailsItemId: item.orderDetailsItemId || 0,
+                  orderDetailsReplacingItemId: 0,
+                  orderDetailsName: item.orderDetailsName || "",
+                  orderDetailsPcking: "Standard Packing",
+                  orderDetailsQty: item.orderDetailsQty || 1,
+                  // orderDetailsPriceUsd: item.orderDetailsPriceUsd || 0,
+                  // orderDetailsLineTotalUsd: item.orderDetailsLineTotalUsd || 0,
+                  // orderDetailsVatUsd: 0,
+                  // orderDetailsGrossUsd: 0,
+                  // orderDetailsKitchineReply: "",
+                  // orderDetailsKitchedAlternativeItemId: 0,
+                  // orderDetailsKitchedAlternativeItemName: "",
+                  // orderDetailsKitchedFreeNotes: "",
+                  // orderDetailsPackingId: 1,
+                  // orderDetailsKitchenReplyId: 0,
+                  // orderDetailsSalesComment: "",
+                  orderDetailsDescription: item.orderDetailsDescription || "",
+                  orderDetailsUnitName: item.OrderDetailsUnitName || "",
+                  // orderDetailsPriceEgp: 0,
+                  // orderDetailsLineTotalEgp: 0,
+                  // orderDetailsVatEgp: 0,
+                  // orderDetailsGrossEgp: 0,
+                  // orderDetailsReplaceItem: false,
+                  orderDetailsPrintedQty: item.orderDetailsQty || 1,
+                  // orderDetailsSupplierPrice: 0,
+                  // orderDetailsSupplierTotal: 0,
+                  // orderDetailsSupplierName: "",
+                  // orderDetailsSupplierId: 0,
+                  // orderDetailsSupplierTax: 0,
+                  // orderDetailsSupplierTaxValue: 0,
+                  // orderDetailsSupplierNetTotal: 0,
+                  // orderDetailsSupplierCurrencyId: 0,
+                  // orderDetailsSupplierCurrencyName: "",
+                  // orderDetailsIsPacking: false,
+                  // orderDetailsIsBeverage: false,
+                  // orderDetailsIsPastry: false,
+                  // orderDetailsIsBakery: false,
+                  // orderDetailsIsGardemanger: false,
+                  // orderDetailsIsHotkitchen: false,
+                  // orderDetailsIsPackingOk: false,
+                  // orderDetailsIsBeverageOk: false,
+                  // orderDetailsIsPastryOk: false,
+                  // orderDetailsIsBakeryOk: false,
+                  // orderDetailsIsGardemangerOk: false,
+                  // orderDetailsIsHotkitchenOk: false,
+                  // orderDetailsIsPackingHold: false,
+                  // orderDetailsIsBeverageHold: false,
+                  // orderDetailsIsPastryHold: false,
+                  // orderDetailsIsBakeryHold: false,
+                  // orderDetailsIsGardemangerHold: false,
+                  // orderDetailsIsHotkitchenHold: false,
+                  orderDetailsIsArrival: Boolean(item.orderDetailsIsArrival),
+                  orderDetailsIsDepartur: Boolean(item.orderDetailsIsDepartur),
+                  // orderDetailsMergedItems: 0,
+                  // orderDetailsChedgedItemsNode: "",
+                  // orderDetailsCurrencyPrice: item.orderDetailsPriceUsd || 0,
+                  // orderDetailsCurrencyTotalLine: item.orderDetailsLineTotalUsd || 0,
+                  // orderDetailsIsSupplierPacking: false,
+                  orderDetailsFoodMenuItemFromPos: false,
+                  orderHeaderClientMenuHeaderId: 0,
+               })) || []
+            };
+            onlineOrderToast.loading(lang == "EN" ? "Sending Request..." : "...جاري إرسال الطلب", { id: "creatingOrder" });
+            guestMutation.mutate(guestPayload, {
+               onSuccess: () => {
+                  onlineOrderToast.success(lang == "EN" ? "Request sent successfully" : "تم إرسال الطلب بنجاح", { id: "creatingOrder" });
+                  onClose();
+                  actions.resetForm();
+                  setStep(0);
+                  actions.setSubmitting(false);
+               },
+               onError: () => {
+                  onlineOrderToast.error(lang == "EN" ? "Failed to send request" : "فشل إرسال الطلب", { id: "creatingOrder" });
+                  actions.setSubmitting(false);
                }
-            );
-         } else {
-            createOrderByClientMutation.mutate(orderHeaderPayload, {
-               onSuccess: handleSuccess,
-               onError: handleError,
             });
+         } else {
+            onlineOrderToast.loading(lang == "EN" ? "Creating Order..." : "...جاري إنشاء الطلب", { id: "creatingOrder" });
+
+            if (oldOrderId) {
+               orderAgainMutation.mutate(
+                  { oldOrderHeaderId: oldOrderId, newHeader: orderHeaderPayload },
+                  {
+                     onSuccess: (response) => {
+                        handleSuccess(response);
+                        const newOrderData = response?.data?.[0]?.header || response?.[0]?.header;
+                        if (newOrderData?.orderHeaderId) {
+                           navigate(`/order/${newOrderData.orderHeaderId}`);
+                        }
+                     },
+                     onError: handleError
+                  }
+               );
+            } else {
+               createOrderByClientMutation.mutate(orderHeaderPayload, {
+                  onSuccess: handleSuccess,
+                  onError: handleError,
+               });
+            }
          }
       }
    };
+
+   let guestFormData = {};
+   try {
+      guestFormData = JSON.parse(localStorage.getItem("guestFormData")) || {};
+   } catch (e) {
+      guestFormData = {};
+   }
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -721,11 +848,17 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                      arrivalDeliveryDate: null,
                      departureDeliveryDate: null,
                      isStationHasVisa: false,
+                     companyPersonalName: guestFormData.companyPersonalName || "",
+                     companyName: guestFormData.companyName || "",
+                     contryID: guestFormData.contryID || "",
+                     mobil: guestFormData.mobil || "",
+                     email: guestFormData.email || "",
+                     companyLink: guestFormData.companyLink || "",
                      orderHeaderPaxnum: "",
                      orderHeaderCrewNum: "",
                      orderHeaderArrivalPaxnum: "",
                      orderHeaderArrivalCrewNum: "",
-                     orderHeaderFlightType: "Both",
+                     orderHeaderFlightType: user ? "Both" : cart?.every((item) => item.orderDetailsIsArrival) ? "Arrival" : cart?.every((item) => item.orderDetailsIsDepartur) ? "Departure" : "Both",
                      paymentInfoAccountBankName: profileSettings?.paymentInfoAccountBankName || "",
                      paymentInfoAccountNumber: profileSettings?.paymentInfoAccountNumber || "",
                      paymentInfoIBan: profileSettings?.paymentInfoIBan || "",
@@ -794,6 +927,115 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                            <Form id={`guide-modal-step-${step}`} className="flex flex-col h-full relative p-1">
                               <FormObserver currencyList={currencyList} setFieldValue={setFieldValue} />
 
+                              {stepsConfig[step]?.id === 'guestInfo' && (
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="col-span-1">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {lang === 'AR' ? 'الاسم الشخصي' : 'Personal Name'}
+                                       </label>
+                                       <TextField
+                                          name="companyPersonalName"
+                                          value={values.companyPersonalName}
+                                          onChange={(e) => setFieldValue("companyPersonalName", e.target.value)}
+                                          onBlur={() => setFieldTouched("companyPersonalName", true)}
+                                          error={touched.companyPersonalName && Boolean(errors.companyPersonalName)}
+                                          helperText={touched.companyPersonalName && errors.companyPersonalName}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       />
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {lang === 'AR' ? 'اسم الشركة' : 'Company Name'}
+                                       </label>
+                                       <TextField
+                                          name="companyName"
+                                          value={values.companyName}
+                                          onChange={(e) => setFieldValue("companyName", e.target.value)}
+                                          onBlur={() => setFieldTouched("companyName", true)}
+                                          error={touched.companyName && Boolean(errors.companyName)}
+                                          helperText={touched.companyName && errors.companyName}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       />
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {langText.email[lang]}
+                                       </label>
+                                       <TextField
+                                          name="email"
+                                          type="email"
+                                          value={values.email}
+                                          onChange={(e) => setFieldValue("email", e.target.value)}
+                                          onBlur={() => setFieldTouched("email", true)}
+                                          error={touched.email && Boolean(errors.email)}
+                                          helperText={touched.email && errors.email}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       />
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {langText.companyLink[lang]}
+                                       </label>
+                                       <TextField
+                                          name="companyLink"
+                                          value={values.companyLink}
+                                          onChange={(e) => setFieldValue("companyLink", e.target.value)}
+                                          onBlur={() => setFieldTouched("companyLink", true)}
+                                          error={touched.companyLink && Boolean(errors.companyLink)}
+                                          helperText={touched.companyLink && errors.companyLink}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       />
+                                    </div>
+                                    <div className="col-span-1 ">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {lang === 'AR' ? 'البلد' : 'Country'}
+                                       </label>
+                                       <TextField
+                                          select
+                                          name="contryID"
+                                          value={values.contryID}
+                                          onChange={(e) => setFieldValue("contryID", e.target.value)}
+                                          onBlur={() => setFieldTouched("contryID", true)}
+                                          error={touched.contryID && Boolean(errors.contryID)}
+                                          helperText={touched.contryID && errors.contryID}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       >
+                                          {countries?.map((item) => (
+                                             <MenuItem key={item.countryID} value={item.countryID} sx={{ fontSize: "12px" }}>
+                                                {item.countryName + " (" + item.countryCode + ")"}
+                                             </MenuItem>
+                                          ))}
+                                       </TextField>
+                                    </div>
+                                    <div className="col-span-1">
+                                       <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                          {langText.phoneNumber[lang]}
+                                       </label>
+                                       <TextField
+                                          name="mobil"
+                                          value={values.mobil}
+                                          onChange={(e) => setFieldValue("mobil", e.target.value)}
+                                          onBlur={() => setFieldTouched("mobil", true)}
+                                          error={touched.mobil && Boolean(errors.mobil)}
+                                          helperText={touched.mobil && errors.mobil}
+                                          fullWidth
+                                          size="small"
+                                          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", backgroundColor: "var(--color-bg-box)", height: "30px", fontSize: "12px" }, "& .MuiInputBase-input": { color: "var(--color-primary) !important", padding: "0 12px" } }}
+                                       />
+                                    </div>
+                                 </div>
+                              )}
+
                               {stepsConfig[step]?.id === 'orderDetail' && (
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="col-span-1">
@@ -835,6 +1077,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        </label>
                                        <div className="relative">
                                           <select
+                                             disabled={!user}
                                              value={values.orderHeaderFlightType}
                                              onChange={(e) => {
                                                 setFieldValue("orderHeaderFlightType", e.target.value)
@@ -855,7 +1098,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 setFieldTouched("orderHeaderFlightType", true, false);
                                              }}
                                              onBlur={() => setFieldTouched("orderHeaderFlightType", true, false)}
-                                             className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] border-gray-300 font-medium`}
+                                             className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] border-gray-300 font-medium ${!user ? "opacity-80 cursor-not-allowed" : ""}`}
                                           >
                                              <option value="Arrival">{lang === "AR" ? "وصول" : "Arrival"}</option>
                                              <option value="Departure">{lang === "AR" ? "مغادرة" : "Departure"}</option>
@@ -1112,7 +1355,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        </div>
                                        {touched.paymentCurrency && errors.paymentCurrency && <div className="text-red-500 text-xs mt-1">{errors.paymentCurrency}</div>}
                                     </div>
-                                    {profileSettings?.agentIsVisible && (
+                                    {(profileSettings?.agentIsVisible || !user) && (
                                        <div className="col-span-1">
                                           <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Agent {profileSettings?.agentIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.agent?.[lang] || "Agent"} /></label>
                                           <FreeTextLookup
@@ -1136,7 +1379,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           )}
                                        </div>
                                     )}
-                                    {profileSettings?.operatorIsVisible && (
+                                    {(profileSettings?.operatorIsVisible || !user) && (
                                        <div className="col-span-1">
                                           <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Operator {profileSettings?.operatorIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.operator?.[lang] || "Operator"} /></label>
                                           <FreeTextLookup

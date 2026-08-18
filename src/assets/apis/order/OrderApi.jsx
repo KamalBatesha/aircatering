@@ -287,4 +287,15 @@ export function CreateReminder(orderHeaderId) {
     .catch((error) => {
       throw error;
     });
-}
+}
+
+export function SendGuestRequest(data) {
+  return axiosInstance
+    .post(`/api/AirCatringFirstOrder/FirstOrder`, data)
+    .then((response) => {
+      return response.data;
+    })
+    .catch((error) => {
+      throw error;
+    });
+}

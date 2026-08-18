@@ -25,7 +25,7 @@ const useAuth = () => {
 
     if (!user) {
       logout();
-      clearCart();
+      // clearCart();
       setLoading(false);
       return;
     }

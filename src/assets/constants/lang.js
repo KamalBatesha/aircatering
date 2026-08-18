@@ -12,6 +12,10 @@ const langText = {
     EN: "Explore Our Menu",
     AR: "استكشف قائمتنا",
   },
+  urgentOrderDisclaimer: {
+    EN: "If you have an urgent order, you can go directly to the Home page and place your order. Your Full Menu Request will be sent automatically along with your order. Please note that you can use this urgent-order option only once.",
+    AR: "إذا كان لديك طلب عاجل، يمكنك الانتقال مباشرةً إلى الصفحة الرئيسية وإجراء طلبك، وسيتم إرسال طلب القائمة الكاملة تلقائيًا مع طلبك. يرجى ملاحظة أنه يمكنك استخدام خيار الطلب العاجل هذا مرة واحدة فقط.",
+  },
   markAsRead: {
     EN: "Mark as Read",
     AR: "تحديد كمقروء",
@@ -1440,6 +1444,18 @@ const langText = {
   failedToUpdateProfile: {
     EN: "Failed to update profile",
     AR: "فشل في تحديث حسابك الشخصي",
+  },
+  invalidUrl: {
+    EN: "Invalid URL",
+    AR: "رابط غير صحيح",
+  },
+  companyLinkIsRequired: {
+    EN: "Company link is required",
+    AR: "رابط الشركة مطلوب",
+  },
+  companyLink: {
+    EN: "Company Link",
+    AR: "رابط الشركة",
   },
 };
 

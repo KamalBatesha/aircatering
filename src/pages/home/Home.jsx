@@ -45,7 +45,7 @@ export function HomeHero({ lang, onOrderClick }) {
 function Home() {
   const { lang } = useLangStore();
   const [selectedBar, setSelectedBar] = useState(0);
-  const { cart, updateQuantity, setSelectedOrder, selectedOrder } = useCartStore();
+  const { cart, updateQuantity, setSelectedOrder, selectedOrder, removeFromCart } = useCartStore();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const [reviewsIds, setReviewsIds] = useState([]);
@@ -61,8 +61,12 @@ function Home() {
   const deleteMutation = useMutation({
     mutationFn: (detailId) => DeleteOrderItemAirCatering(detailId),
     onSuccess: () => {
+      onlineOrderToast.success(lang === 'AR' ? 'تم حذف العنصر بنجاح' : 'Item deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['orderDetails', selectedOrder?.orderHeaderId] });
       queryClient.invalidateQueries({ queryKey: ['myOrders'] });
+    },
+    onError: () => {
+      onlineOrderToast.error(lang === 'AR' ? 'حدث خطأ أثناء حذف العنصر' : 'Error deleting item');
     },
   });
 
@@ -133,10 +137,11 @@ function Home() {
   }
 
   const detailsArray = React.useMemo(() => {
+    if (!user) return cart || [];
     if (!orderDetails) return [];
     if (Array.isArray(orderDetails?.at(0)?.details)) return orderDetails?.at(0)?.details;
     return [];
-  }, [orderDetails]);
+  }, [orderDetails, user, cart]);
 
   const filteredDetails = React.useMemo(() => {
     if (cartTab === 'Arrival') return detailsArray.filter(item => item.orderDetailsIsArrival);
@@ -160,7 +165,7 @@ function Home() {
 
 
   function renderCartContent({ inDrawer = false } = {}) {
-    if (!user) {
+    if (!user && cart.length === 0) {
       return (
         <div className={`bg-white p-6 flex flex-col items-center justify-center border border-[#E5E5E5] shadow-sm ${inDrawer ? 'flex-1 rounded-none' : 'h-[550px] border-t-0 rounded-b-2xl'}`}>
           <div className="text-center flex flex-col items-center justify-center gap-4">
@@ -178,7 +183,7 @@ function Home() {
         </div>
       );
     }
-    if (!selectedOrder) {
+    if (user && !selectedOrder) {
       return (
         <div className={`bg-white p-6 flex flex-col items-center justify-center border border-[#E5E5E5] shadow-sm ${inDrawer ? 'flex-1 rounded-none' : 'h-[550px] border-t-0 rounded-b-2xl'}`}>
           <div className="text-center flex flex-col items-center justify-center gap-4">
@@ -193,24 +198,25 @@ function Home() {
 
     return (
       <div className={`bg-white border border-[#E5E5E5] pt-2 flex flex-col ${inDrawer ? 'flex-1 rounded-none border-0' : 'h-[550px] border-t-0 rounded-b-2xl shadow-sm'}`}>
-        {selectedOrder?.orderHeaderIsArrival && selectedOrder?.orderHeaderIsDeparture && <div className="flex bg-[#F6F4EF] p-1.5 m-3 rounded-xl gap-1 shrink-0">
-          {['All', 'Arrival', 'Departure'].map((tab) => {
-            const active = cartTab === tab;
-            return (
-              <button key={tab} onClick={() => setCartTab(tab)}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg transition-all"
-                style={{ backgroundColor: active ? '#FFFFFF' : 'transparent', color: active ? '#49494A' : '#6b6b6b', boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none' }}
-              >
-                {tab === 'All' ? (lang === 'AR' ? 'الكل' : 'All') : tab === 'Arrival' ? (lang === 'AR' ? 'الوصول' : 'Arrival') : (lang === 'AR' ? 'المغادرة' : 'Departure')}
-              </button>
-            );
-          })}
-        </div>}
-        <div className="grid grid-cols-14 gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-[#F0F0F0] shrink-0">
+        {(selectedOrder?.orderHeaderIsArrival && selectedOrder?.orderHeaderIsDeparture) || (!user) ? (
+          <div className="flex bg-[#F6F4EF] p-1.5 m-3 rounded-xl gap-1 shrink-0">
+            {['All', 'Arrival', 'Departure'].map((tab) => {
+              const active = cartTab === tab;
+              return (
+                <button key={tab} onClick={() => setCartTab(tab)}
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg transition-all"
+                  style={{ backgroundColor: active ? '#FFFFFF' : 'transparent', color: active ? '#49494A' : '#6b6b6b', boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none' }}
+                >
+                  {tab === 'All' ? (lang === 'AR' ? 'الكل' : 'All') : tab === 'Arrival' ? (lang === 'AR' ? 'الوصول' : 'Arrival') : (lang === 'AR' ? 'المغادرة' : 'Departure')}
+                </button>
+              );
+            })}
+          </div>) : null}
+        <div className={`grid ${user ? "grid-cols-14" : "grid-cols-8"} gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-[#F0F0F0] shrink-0`}>
           <div className="col-span-4">{lang === 'AR' ? 'العنصر' : 'Item'}</div>
           <div className="col-span-3 text-center">{lang === 'AR' ? 'الكمية' : 'Quantity'}</div>
-          <div className="col-span-3 text-right">{lang === 'AR' ? 'سعر الوحدة' : 'Unit Price'}</div>
-          <div className="col-span-3 text-right">{lang === 'AR' ? 'السعر' : 'Total Price'}</div>
+          {user && <> <div className="col-span-3 text-right">{lang === 'AR' ? 'سعر الوحدة' : 'Unit Price'}</div>
+            <div className="col-span-3 text-right">{lang === 'AR' ? 'السعر' : 'Total Price'}</div></>}
           <div className="col-span-1"></div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
@@ -227,7 +233,7 @@ function Home() {
                     const isArrival = item.orderDetailsIsArrival;
                     const isDeparture = item.orderDetailsIsDepartur;
                     return (
-                      <div key={idx} className="grid grid-cols-14 gap-2 items-center p-3 rounded-2xl border bg-[#FBFBFA] text-xs transition-all hover:shadow-sm" style={{ borderColor: '#EFEFEF' }}>
+                      <div key={idx} className={`grid ${user ? "grid-cols-14" : "grid-cols-8"} gap-2 items-center p-3 rounded-2xl border bg-[#FBFBFA] text-xs transition-all hover:shadow-sm`} style={{ borderColor: '#EFEFEF' }}>
                         <div className="col-span-4 flex flex-col gap-1 min-w-0">
                           <span className="font-bold text-[#49494A] leading-tight" title={item.orderDetailsName}>
                             {item.orderDetailsName ? (item.orderDetailsName.length > 20 ? item.orderDetailsName.substring(0, 10) + '...' : item.orderDetailsName) : '—'}
@@ -238,16 +244,29 @@ function Home() {
                           </div>
                         </div>
                         <div className="col-span-3 text-center font-bold text-[#49494A]">{item.orderDetailsQty}</div>
-                        <div className="col-span-3 text-right text-[10px] text-gray-500">${(item.orderDetailsPriceUsd || 0).toFixed(2)}</div>
-                        <div className="col-span-3 text-right font-extrabold text-[#C5A76D]">${(item.orderDetailsLineTotalUsd || 0).toFixed(2)}</div>
+                        {user ? <>
+                          <div className="col-span-3 text-right text-[10px] text-gray-500">${(item.orderDetailsPriceUsd || 0).toFixed(2)}</div>
+                          <div className="col-span-3 text-right font-extrabold text-[#C5A76D]">${(item.orderDetailsLineTotalUsd || 0).toFixed(2)}</div>
+                        </> : null}
                         <div className="col-span-1 flex justify-center">
                           <button
-                            disabled={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(item.orderDetailsId)}
+                            disabled={user && deleteMutation.isPending && deleteMutation.variables == item.orderDetailsId}
+                            onClick={() => {
+                              if (!user) {
+                                removeFromCart(item.cartItemId);
+                                onlineOrderToast.success(lang === 'AR' ? 'تم حذف العنصر بنجاح' : 'Item deleted successfully');
+                              } else {
+                                deleteMutation.mutate(item.orderDetailsId);
+                              }
+                            }}
                             className="w-6 h-6 rounded-lg bg-red-50 border border-red-200 hover:bg-red-100 transition flex items-center justify-center text-red-500 cursor-pointer disabled:opacity-50"
                             title={lang === 'AR' ? 'حذف الصنف' : 'Void Item'}
                           >
-                            <FaTrash className="text-[10px]" />
+                            {user && deleteMutation.isPending && deleteMutation.variables == item.orderDetailsId ? (
+                              <BiLoaderAlt className="animate-spin text-[10px]" />
+                            ) : (
+                              <FaTrash className="text-[10px]" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -258,46 +277,57 @@ function Home() {
             )}
         </div>
         <div className="p-4 border-t border-[#E5E5E5] bg-[#FDFDFD] shrink-0 space-y-3" style={{ borderRadius: inDrawer ? '0' : '0 0 1rem 1rem' }}>
-          {!!selectedOrder.orderHeaderNetUsd && (
-            <>
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Items subtotal" : "إجمالي الأصناف"}</span>
-                <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderNetUsd || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderNetUsd || 0).toFixed(2))} دولار`}</span>
-              </div>
-              {!!selectedOrder.orderHeaderTransportaion &&
+          {user ? (
+            !!selectedOrder?.orderHeaderNetUsd && (
+              <>
                 <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Transportation" : "النقل"}</span>
-                  <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderTransportaion || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderTransportaion || 0).toFixed(2))} دولار`}</span>
-                </div>}
-              {!!selectedOrder.orderHeaderAirportCost &&
+                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Items subtotal" : "إجمالي الأصناف"}</span>
+                  <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderNetUsd || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderNetUsd || 0).toFixed(2))} دولار`}</span>
+                </div>
+                {!!selectedOrder.orderHeaderTransportaion &&
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Transportation" : "النقل"}</span>
+                    <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderTransportaion || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderTransportaion || 0).toFixed(2))} دولار`}</span>
+                  </div>}
+                {!!selectedOrder.orderHeaderAirportCost &&
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Airport Fees" : "رسوم المطار"}</span>
+                    <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderAirportCost || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderAirportCost || 0).toFixed(2))} دولار`}</span>
+                  </div>}
+                {!!selectedOrder.orderHeaderHandling &&
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Handling Fees" : "رسوم المناولة"}</span>
+                    <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderHandling || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderHandling || 0).toFixed(2))} دولار`}</span>
+                  </div>}
+                {!!selectedOrder.orderHeaderDiscount &&
+                  <div className="flex justify-between items-baseline text-[#f87171]">
+                    <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Discount" : "الخصم"}</span>
+                    <span className="text-xs">{lang === "EN" ? ` (${((selectedOrder.orderHeaderDiscountPercent || 0).toFixed(2))} %) ${(selectedOrder.orderHeaderDiscount || 0).toFixed(2)} USD` : `(${toArabicNumbers((selectedOrder.orderHeaderDiscountPercent || 0).toFixed(2))} %) ${toArabicNumbers((selectedOrder.orderHeaderDiscount || 0).toFixed(2))} دولار`}</span>
+                  </div>}
+                {!!selectedOrder.orderHeaderGrossUsd && <hr />}
                 <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Airport Fees" : "رسوم المطار"}</span>
-                  <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderAirportCost || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderAirportCost || 0).toFixed(2))} دولار`}</span>
-                </div>}
-              {!!selectedOrder.orderHeaderAirportCost &&
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Handling Fees" : "رسوم المناولة"}</span>
-                  <span className="text-xs">{lang === "EN" ? `${(selectedOrder.orderHeaderHandling || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderHandling || 0).toFixed(2))} دولار`}</span>
-                </div>}
-              {!!selectedOrder.orderHeaderAirportCost &&
-                <div className="flex justify-between items-baseline text-[#f87171]">
-                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Discount" : "الخصم"}</span>
-                  <span className="text-xs">{lang === "EN" ? ` (${((selectedOrder.orderHeaderDiscountPercent || 0).toFixed(2))} %) ${(selectedOrder.orderHeaderDiscount || 0).toFixed(2)} USD` : `(${toArabicNumbers((selectedOrder.orderHeaderDiscountPercent || 0).toFixed(2))} %) ${toArabicNumbers((selectedOrder.orderHeaderDiscount || 0).toFixed(2))} دولار`}</span>
-                </div>}
-              {!!selectedOrder.orderHeaderGrossUsd && <hr />}
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Grand Total" : "الإجمالي الكلي"}</span>
-                <span className="text-base font-extrabold text-primary">{lang === "EN" ? `${(selectedOrder.orderHeaderGrossUsd || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderGrossUsd || 0).toFixed(2))} دولار`}</span>
-              </div>
-            </>
-          )}
-          <button
-            onClick={() => { if (!user) { onlineOrderToast.error(langText.pleaseLoginFirst[lang]); navigate("/login"); return; } setIsCartDrawerOpen(false); navigate(`/order/${selectedOrder.orderHeaderId}`); }}
-            className="w-full py-3 mt-1 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #C5A76D 0%, #b08848 100%)' }}
-          >
-            {lang === 'AR' ? 'عرض تفاصيل الطلب' : 'View Order Details'}
-          </button>
+                  <span className="text-xs text-gray-400 font-medium">{lang === "EN" ? "Grand Total" : "الإجمالي الكلي"}</span>
+                  <span className="text-base font-extrabold text-primary">{lang === "EN" ? `${(selectedOrder.orderHeaderGrossUsd || 0).toFixed(2)} USD` : `${toArabicNumbers((selectedOrder.orderHeaderGrossUsd || 0).toFixed(2))} دولار`}</span>
+                </div>
+              </>
+            )
+          ) : null}
+          {user ?
+            <button
+              onClick={() => { if (!user) { onlineOrderToast.error(langText.pleaseLoginFirst[lang]); navigate("/login"); return; } setIsCartDrawerOpen(false); navigate(`/order/${selectedOrder.orderHeaderId}`); }}
+              className="w-full py-3 mt-1 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #C5A76D 0%, #b08848 100%)' }}
+            >
+              {lang === 'AR' ? 'عرض تفاصيل الطلب' : 'View Order Details'}
+            </button> :
+            <button
+              onClick={() => { setIsCartDrawerOpen(false); setIsCreateOrderModalOpen(true); }}
+              className="w-full py-3 mt-1 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #C5A76D 0%, #b08848 100%)' }}
+            >
+              {lang === 'AR' ? 'أرسل طلب' : 'Send Order Request'}
+            </button>
+          }
         </div>
       </div>
     );

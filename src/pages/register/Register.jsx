@@ -639,6 +639,10 @@ function Request() {
     companyPersonalName: yup
       .string()
       .required(langText.companyPersonalNameIsRequired[lang]),
+    companyLink: yup
+      .string()
+      .required(langText.companyLinkIsRequired[lang])
+      .url(langText.invalidUrl[lang]),
 
   });
   const navigate = useNavigate()
@@ -660,6 +664,7 @@ function Request() {
       contryID: "",
       companyName: "",
       companyPersonalName: "",
+      companyLink: "",
       subscribe: false,
       password: "Sky@1234",
     },
@@ -669,13 +674,22 @@ function Request() {
       // return;
 
       AskToRegister.mutate(
-        { ...values, contryID: Number(values.contryID) },
+        { ...values, companyWebSite: values.companyLink, contryID: Number(values.contryID) },
         {
           onMutate: () => {
             toast.loading(langText.loading[lang] + "...", { id: 1 });
           },
           onSuccess: (data) => {
             toast.success(langText.requestSentSuccessfully[lang], { id: 1 });
+            const guestFormData = {
+              companyPersonalName: values.companyPersonalName,
+              companyName: values.companyName,
+              contryID: values.contryID,
+              mobil: values.mobil,
+              email: values.email,
+              companyLink: values.companyLink,
+            };
+            localStorage.setItem("guestFormData", JSON.stringify(guestFormData));
             resetForm(); // ✅ هنا صح
             setEmail(values?.email);
             setIsPopupOpen(true);
@@ -705,7 +719,7 @@ function Request() {
     window.scrollTo(0, 0);
   }, [])
   return (
-    <div className="flex flex-col items-center gap-9 py-24 bg-light-gray-100 xl:px-50 lg:px-30 md:px-20 px-10 relative">
+    <div className="flex flex-col items-center py-24 bg-light-gray-100 xl:px-50 lg:px-30 md:px-20 px-10 relative">
       <span onClick={() => navigate("/home")} className={`absolute left-[5%] cursor-pointer hover:scale-105 transition-all duration-300 text-lg top-[5%] lg:block text-primary hidden md:block`}>{lang == "AR" ? "اذهب للرئيسيه" : "Go To Home"}</span>
 
       <motion.h2
@@ -726,7 +740,24 @@ function Request() {
         )}
       </motion.h2>
 
-      <form onSubmit={formik.handleSubmit} className='w-full flex flex-col items-center'>
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        viewport={{ once: true, amount: 0.3 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="w-full max-w-3xl bg-primary/5 border border-primary/20 p-3 mb-6 rounded-2xl shadow-sm text-gray-600 flex gap-3 items-start"
+      >
+        <div className="text-primary mt-0.5 flex-shrink-0">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <p className="text-[13px] md:text-sm leading-relaxed text-start font-medium">
+          {langText.urgentOrderDisclaimer[lang]}
+        </p>
+      </motion.div>
+
+      <form onSubmit={formik.handleSubmit} className='w-full flex flex-col items-center max-w-3xl'>
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           viewport={{ once: true, amount: 0.3 }}
@@ -805,7 +836,7 @@ function Request() {
           viewport={{ once: true, amount: 0.3 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="w-full"
+          className="w-full flex flex-col md:flex-row md:items-stretch md:gap-9"
         >
           <input
             type="text"
@@ -814,11 +845,25 @@ function Request() {
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
             placeholder={langText.email[lang]}
-            className="border-0 border-b border-primary w-full py-4 transition-all duration-300 ps-0 focus:ps-5 focus:outline-none"
+            className="box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none"
           />
+          {(formik.errors.email && formik.touched.email) && <div className="w-full text-red-400 md:hidden">{formik.errors.email}</div>}
+
+          <input
+            type="text"
+            name='companyLink'
+            value={formik.values.companyLink}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            placeholder={langText.companyLink[lang]}
+            className="box-border h-14 min-h-14 flex-1 min-w-0 w-full appearance-none border-0 border-b border-primary py-0 ps-0 leading-normal transition-all duration-300 focus:ps-5 focus:outline-none"
+          />
+          {(formik.errors.companyLink && formik.touched.companyLink) && <div className="w-full text-red-400 md:hidden">{formik.errors.companyLink}</div>}
+
         </motion.div>
-        <div className="items-center w-full text-red-400 flex">
-          {<div className="w-1/2">{(formik.errors.email && formik.touched.email) && formik.errors.email}</div>}
+        <div className="items-center w-full text-red-400 hidden md:flex md:gap-9">
+          {<div className="flex-1 w-full">{(formik.errors.email && formik.touched.email) && formik.errors.email}</div>}
+          {<div className="flex-1 w-full">{(formik.errors.companyLink && formik.touched.companyLink) && formik.errors.companyLink}</div>}
         </div>
         <motion.div
           initial={{ opacity: 0, y: 50 }}
