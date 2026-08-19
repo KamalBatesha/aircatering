@@ -28,6 +28,55 @@ const FormObserver = ({ currencyList, setFieldValue }) => {
    return null;
 };
 
+// ─── Guest Draft Persistence ─────────────────────────────────────────────────
+const GUEST_DRAFT_KEY = "guestCreateOrderDraft";
+
+const serializeGuestDraft = (values, step, maxReachedStep) => {
+   return JSON.stringify({
+      values: {
+         ...values,
+         arrivalDate: values.arrivalDate?.isValid?.() ? values.arrivalDate.toISOString() : null,
+         departureDate: values.departureDate?.isValid?.() ? values.departureDate.toISOString() : null,
+         arrivalDeliveryDate: values.arrivalDeliveryDate?.isValid?.() ? values.arrivalDeliveryDate.toISOString() : null,
+         departureDeliveryDate: values.departureDeliveryDate?.isValid?.() ? values.departureDeliveryDate.toISOString() : null,
+      },
+      step,
+      maxReachedStep,
+   });
+};
+
+const restoreGuestDraft = (stepsLength) => {
+   try {
+      const raw = sessionStorage.getItem(GUEST_DRAFT_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.values) return null;
+      const v = parsed.values;
+      return {
+         values: {
+            ...v,
+            arrivalDate: v.arrivalDate ? dayjs(v.arrivalDate) : null,
+            departureDate: v.departureDate ? dayjs(v.departureDate) : null,
+            arrivalDeliveryDate: v.arrivalDeliveryDate ? dayjs(v.arrivalDeliveryDate) : null,
+            departureDeliveryDate: v.departureDeliveryDate ? dayjs(v.departureDeliveryDate) : null,
+         },
+         step: Math.min(Math.max(parsed.step ?? 0, 0), stepsLength - 1),
+         maxReachedStep: Math.min(Math.max(parsed.maxReachedStep ?? 0, 0), stepsLength - 1),
+      };
+   } catch {
+      return null;
+   }
+};
+
+const GuestDraftSaver = ({ values, step, maxReachedStep, user }) => {
+   useEffect(() => {
+      if (!user) {
+         sessionStorage.setItem(GUEST_DRAFT_KEY, serializeGuestDraft(values, step, maxReachedStep));
+      }
+   }, [values, step, maxReachedStep, user]);
+   return null;
+};
+
 import {
    Box,
    ClickAwayListener,
@@ -287,7 +336,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    const [step, setStep] = useState(0);
    const [maxReachedStep, setMaxReachedStep] = useState(0);
    const { user } = useAuthStore();
-   const cart = useCartStore((state) => state.cart);
+   const { cart, clearCart } = useCartStore((state) => state);
 
    const { lang } = useLangStore();
 
@@ -340,7 +389,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    // Step 2: Date & Time + Delivery Dates (merged)
    const Step2Schema = Yup.object().shape({
       arrivalDate: Yup.mixed()
-         .nullable()
+         .required(langText.arrivalDateIsRequired[lang])
          .test(
             'arrival-required',
             lang === "AR" ? "تاريخ الوصول مطلوب" : "Arrival date is required",
@@ -363,7 +412,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             }
          ),
       departureDate: Yup.mixed()
-         .nullable()
+         .required(langText.departureDateIsRequired[lang])
          .test(
             'departure-required',
             lang === "AR" ? "تاريخ المغادرة مطلوب" : "Departure date is required",
@@ -512,7 +561,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    ];
 
    const stepsConfig = user ? baseStepsConfig : [
-      { id: 'guestInfo', label: lang === "AR" ? "معلومات المستخدم" : "User Information", schema: GuestSchema },
+      { id: 'guestInfo', label: lang === "AR" ? "بيانات طلب التسجيل" : "Registration Request Data", schema: GuestSchema },
       ...baseStepsConfig
    ];
 
@@ -550,10 +599,22 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       if (!isOpen) {
          originalProfileSettings.current = null;
       } else {
-         setStep(0);
-         setMaxReachedStep(0);
+         if (!user) {
+            // Guest mode: restore step from draft if available
+            const draft = restoreGuestDraft(stepsConfig.length);
+            if (draft) {
+               setStep(draft.step);
+               setMaxReachedStep(draft.maxReachedStep);
+            } else {
+               setStep(0);
+               setMaxReachedStep(0);
+            }
+         } else {
+            setStep(0);
+            setMaxReachedStep(0);
+         }
       }
-   }, [isOpen]);
+   }, [isOpen, user]);
 
    useEffect(() => {
       if (isOpen) {
@@ -688,65 +749,16 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                quatationVM: orderHeaderPayload,
                _detailsQT: cart?.map((item) => ({
                   orderDetailsId: 0,
-                  // orderDetailsHeaderId: 0,
                   orderDetailsItemId: item.orderDetailsItemId || 0,
                   orderDetailsReplacingItemId: 0,
                   orderDetailsName: item.orderDetailsName || "",
                   orderDetailsPcking: "Standard Packing",
                   orderDetailsQty: item.orderDetailsQty || 1,
-                  // orderDetailsPriceUsd: item.orderDetailsPriceUsd || 0,
-                  // orderDetailsLineTotalUsd: item.orderDetailsLineTotalUsd || 0,
-                  // orderDetailsVatUsd: 0,
-                  // orderDetailsGrossUsd: 0,
-                  // orderDetailsKitchineReply: "",
-                  // orderDetailsKitchedAlternativeItemId: 0,
-                  // orderDetailsKitchedAlternativeItemName: "",
-                  // orderDetailsKitchedFreeNotes: "",
-                  // orderDetailsPackingId: 1,
-                  // orderDetailsKitchenReplyId: 0,
-                  // orderDetailsSalesComment: "",
                   orderDetailsDescription: item.orderDetailsDescription || "",
                   orderDetailsUnitName: item.OrderDetailsUnitName || "",
-                  // orderDetailsPriceEgp: 0,
-                  // orderDetailsLineTotalEgp: 0,
-                  // orderDetailsVatEgp: 0,
-                  // orderDetailsGrossEgp: 0,
-                  // orderDetailsReplaceItem: false,
                   orderDetailsPrintedQty: item.orderDetailsQty || 1,
-                  // orderDetailsSupplierPrice: 0,
-                  // orderDetailsSupplierTotal: 0,
-                  // orderDetailsSupplierName: "",
-                  // orderDetailsSupplierId: 0,
-                  // orderDetailsSupplierTax: 0,
-                  // orderDetailsSupplierTaxValue: 0,
-                  // orderDetailsSupplierNetTotal: 0,
-                  // orderDetailsSupplierCurrencyId: 0,
-                  // orderDetailsSupplierCurrencyName: "",
-                  // orderDetailsIsPacking: false,
-                  // orderDetailsIsBeverage: false,
-                  // orderDetailsIsPastry: false,
-                  // orderDetailsIsBakery: false,
-                  // orderDetailsIsGardemanger: false,
-                  // orderDetailsIsHotkitchen: false,
-                  // orderDetailsIsPackingOk: false,
-                  // orderDetailsIsBeverageOk: false,
-                  // orderDetailsIsPastryOk: false,
-                  // orderDetailsIsBakeryOk: false,
-                  // orderDetailsIsGardemangerOk: false,
-                  // orderDetailsIsHotkitchenOk: false,
-                  // orderDetailsIsPackingHold: false,
-                  // orderDetailsIsBeverageHold: false,
-                  // orderDetailsIsPastryHold: false,
-                  // orderDetailsIsBakeryHold: false,
-                  // orderDetailsIsGardemangerHold: false,
-                  // orderDetailsIsHotkitchenHold: false,
                   orderDetailsIsArrival: Boolean(item.orderDetailsIsArrival),
                   orderDetailsIsDepartur: Boolean(item.orderDetailsIsDepartur),
-                  // orderDetailsMergedItems: 0,
-                  // orderDetailsChedgedItemsNode: "",
-                  // orderDetailsCurrencyPrice: item.orderDetailsPriceUsd || 0,
-                  // orderDetailsCurrencyTotalLine: item.orderDetailsLineTotalUsd || 0,
-                  // orderDetailsIsSupplierPacking: false,
                   orderDetailsFoodMenuItemFromPos: false,
                   orderHeaderClientMenuHeaderId: 0,
                })) || []
@@ -755,13 +767,19 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             guestMutation.mutate(guestPayload, {
                onSuccess: () => {
                   onlineOrderToast.success(lang == "EN" ? "Request sent successfully" : "تم إرسال الطلب بنجاح", { id: "creatingOrder" });
+                  sessionStorage.removeItem(GUEST_DRAFT_KEY);
                   onClose();
                   actions.resetForm();
                   setStep(0);
+                  clearCart();
                   actions.setSubmitting(false);
                },
-               onError: () => {
-                  onlineOrderToast.error(lang == "EN" ? "Failed to send request" : "فشل إرسال الطلب", { id: "creatingOrder" });
+               onError: (error) => {
+                  console.log("error", error?.response?.data?.message?.toLowerCase());
+                  if (error?.response?.data?.message?.toLowerCase() == "email already registered") { onlineOrderToast.error(lang == "EN" ? "email is already registered" : "البريد الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+                  else if (error?.response?.data?.message?.toLowerCase() == "mobile number already registered.") { onlineOrderToast.error(lang == "EN" ? "mobile number is already registered" : "رقم الهاتف مسجل بالفعل", { id: "creatingOrder" }); }
+                  else if (error?.response?.data?.message?.toLowerCase() == "company website already registered.") { onlineOrderToast.error(lang == "EN" ? "company website is already registered" : "الموقع الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+                  else { onlineOrderToast.error(lang == "EN" ? "Failed to send request" : "فشل إرسال الطلب", { id: "creatingOrder" }); }
                   actions.setSubmitting(false);
                }
             });
@@ -792,16 +810,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       }
    };
 
-   let guestFormData = {};
-   try {
-      guestFormData = JSON.parse(localStorage.getItem("guestFormData")) || {};
-   } catch (e) {
-      guestFormData = {};
-   }
+   // Restore guest draft from sessionStorage (guest mode only)
+   const restoredGuestDraft = !user ? restoreGuestDraft(stepsConfig.length) : null;
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] max-h-[95vh] overflow-hidden flex flex-col">
+         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[75vh] max-h-[95vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center bg-primary text-white p-5">
                <h2 className="text-xl font-bold">
                   {langText.createNewOrder[lang]}
@@ -848,12 +862,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                      arrivalDeliveryDate: null,
                      departureDeliveryDate: null,
                      isStationHasVisa: false,
-                     companyPersonalName: guestFormData.companyPersonalName || "",
-                     companyName: guestFormData.companyName || "",
-                     contryID: guestFormData.contryID || "",
-                     mobil: guestFormData.mobil || "",
-                     email: guestFormData.email || "",
-                     companyLink: guestFormData.companyLink || "",
+                     companyPersonalName: "",
+                     companyName: "",
+                     contryID: "",
+                     mobil: "",
+                     email: "",
+                     companyLink: "",
                      orderHeaderPaxnum: "",
                      orderHeaderCrewNum: "",
                      orderHeaderArrivalPaxnum: "",
@@ -870,6 +884,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                      orderHeadearGroundHandlerName: profileSettings?.groundHandlerName ?? "",
                      orderHeadearGroundHandlerEmail: profileSettings?.groundHandlerEmail ?? "",
                      orderHeadearGroundHandlerPhone: profileSettings?.groundHandlerPhone ?? "",
+                     // Restore guest draft values (takes priority over defaults)
+                     ...(restoredGuestDraft?.values ?? {})
                   }}
                   validationSchema={currentValidationSchema}
                   onSubmit={handleSubmit}
@@ -926,6 +942,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                         <div className="p-6 overflow-y-auto flex-1">
                            <Form id={`guide-modal-step-${step}`} className="flex flex-col h-full relative p-1">
                               <FormObserver currencyList={currencyList} setFieldValue={setFieldValue} />
+                              <GuestDraftSaver values={values} step={step} maxReachedStep={maxReachedStep} user={user} />
 
                               {stepsConfig[step]?.id === 'guestInfo' && (
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1190,24 +1207,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 </div>
                                              )}
                                           </div>
-                                          <div className="col-span-1">
-                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد أفراد طاقم الوصول *" : "Number of Arrival Crew *"} <HelpTooltip text={fieldDescriptions.arrivalCrew[lang]} /></label>
-                                             <TextField
-                                                type="number"
-                                                value={values.orderHeaderArrivalCrewNum}
-                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalCrewNum", true, false); }}
-                                                onBlur={() => setFieldTouched("orderHeaderArrivalCrewNum", true, false)}
-                                                size="small"
-                                                fullWidth
-                                                error={touched.orderHeaderArrivalCrewNum && Boolean(errors.orderHeaderArrivalCrewNum)}
-                                                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px" } }}
-                                             />
-                                             {touched.orderHeaderArrivalCrewNum && errors.orderHeaderArrivalCrewNum && (
-                                                <div className="text-red-500 text-xs mt-1">
-                                                   {errors.orderHeaderArrivalCrewNum}
-                                                </div>
-                                             )}
-                                          </div>
+
                                        </>
                                     )}
                                     {values.orderHeaderFlightType !== "Arrival" && (
@@ -1230,6 +1230,32 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 </div>
                                              )}
                                           </div>
+                                       </>
+                                    )}
+                                    {values.orderHeaderFlightType !== "Departure" && (
+                                       <>
+                                          <div className="col-span-1">
+                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد أفراد طاقم الوصول *" : "Number of Arrival Crew *"} <HelpTooltip text={fieldDescriptions.arrivalCrew[lang]} /></label>
+                                             <TextField
+                                                type="number"
+                                                value={values.orderHeaderArrivalCrewNum}
+                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalCrewNum", true, false); }}
+                                                onBlur={() => setFieldTouched("orderHeaderArrivalCrewNum", true, false)}
+                                                size="small"
+                                                fullWidth
+                                                error={touched.orderHeaderArrivalCrewNum && Boolean(errors.orderHeaderArrivalCrewNum)}
+                                                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px" } }}
+                                             />
+                                             {touched.orderHeaderArrivalCrewNum && errors.orderHeaderArrivalCrewNum && (
+                                                <div className="text-red-500 text-xs mt-1">
+                                                   {errors.orderHeaderArrivalCrewNum}
+                                                </div>
+                                             )}
+                                          </div>
+                                       </>
+                                    )}
+                                    {values.orderHeaderFlightType !== "Arrival" && (
+                                       <>
                                           <div className="col-span-1">
                                              <label className="flex items-center text-sm font-medium text-gray-700 mb-1">{lang === "AR" ? "عدد أفراد طاقم المغادرة *" : "Number of Departure Crew *"} <HelpTooltip text={fieldDescriptions.departureCrew[lang]} /></label>
                                              <TextField
@@ -1278,6 +1304,54 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
 
                               {stepsConfig[step]?.id === 'clientAndPayment' && (
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {(profileSettings?.agentIsVisible || !user) && (
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Agent {profileSettings?.agentIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.agent?.[lang] || "Agent"} /></label>
+                                          <FreeTextLookup
+                                             options={agentsList || []}
+                                             valueId={values.agent}
+                                             valueName={values.agentName}
+                                             onChange={(id, name) => {
+                                                setFieldValue("agent", id);
+                                                setFieldValue("agentName", name.replace(/[\u0600-\u06FF]/g, ""));
+                                                setFieldTouched("agentName", true, false);
+                                             }}
+                                             getOptionLabel={(opt) => opt.agentName}
+                                             getOptionValue={(opt) => opt.agentId}
+                                             error={touched.agentName && Boolean(errors.agentName)}
+                                             onBlur={() => setFieldTouched("agentName", true, false)}
+                                          />
+                                          {touched.agentName && errors.agentName && (
+                                             <div className="text-red-500 text-xs mt-1">
+                                                {errors.agentName}
+                                             </div>
+                                          )}
+                                       </div>
+                                    )}
+                                    {(profileSettings?.operatorIsVisible || !user) && (
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Operator {profileSettings?.operatorIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.operator?.[lang] || "Operator"} /></label>
+                                          <FreeTextLookup
+                                             options={operatorsList || []}
+                                             valueId={values.operator}
+                                             valueName={values.operatorName}
+                                             onChange={(id, name) => {
+                                                setFieldValue("operator", id);
+                                                setFieldValue("operatorName", name.replace(/[\u0600-\u06FF]/g, ""));
+                                                setFieldTouched("operatorName", true, false);
+                                             }}
+                                             getOptionLabel={(opt) => opt.operatorName}
+                                             getOptionValue={(opt) => opt.operatorId}
+                                             error={touched.operatorName && Boolean(errors.operatorName)}
+                                             onBlur={() => setFieldTouched("operatorName", true, false)}
+                                          />
+                                          {touched.operatorName && errors.operatorName && (
+                                             <div className="text-red-500 text-xs mt-1">
+                                                {errors.operatorName}
+                                             </div>
+                                          )}
+                                       </div>
+                                    )}
                                     {/* )} */}
                                     <div className="col-span-1">
                                        <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Bill To * <HelpTooltip text={fieldDescriptions.billTo[lang]} /></label>
@@ -1355,54 +1429,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        </div>
                                        {touched.paymentCurrency && errors.paymentCurrency && <div className="text-red-500 text-xs mt-1">{errors.paymentCurrency}</div>}
                                     </div>
-                                    {(profileSettings?.agentIsVisible || !user) && (
-                                       <div className="col-span-1">
-                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Agent {profileSettings?.agentIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.agent?.[lang] || "Agent"} /></label>
-                                          <FreeTextLookup
-                                             options={agentsList || []}
-                                             valueId={values.agent}
-                                             valueName={values.agentName}
-                                             onChange={(id, name) => {
-                                                setFieldValue("agent", id);
-                                                setFieldValue("agentName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("agentName", true, false);
-                                             }}
-                                             getOptionLabel={(opt) => opt.agentName}
-                                             getOptionValue={(opt) => opt.agentId}
-                                             error={touched.agentName && Boolean(errors.agentName)}
-                                             onBlur={() => setFieldTouched("agentName", true, false)}
-                                          />
-                                          {touched.agentName && errors.agentName && (
-                                             <div className="text-red-500 text-xs mt-1">
-                                                {errors.agentName}
-                                             </div>
-                                          )}
-                                       </div>
-                                    )}
-                                    {(profileSettings?.operatorIsVisible || !user) && (
-                                       <div className="col-span-1">
-                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">Operator {profileSettings?.operatorIsRequired ? "*" : ""} <HelpTooltip text={fieldDescriptions.operator?.[lang] || "Operator"} /></label>
-                                          <FreeTextLookup
-                                             options={operatorsList || []}
-                                             valueId={values.operator}
-                                             valueName={values.operatorName}
-                                             onChange={(id, name) => {
-                                                setFieldValue("operator", id);
-                                                setFieldValue("operatorName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("operatorName", true, false);
-                                             }}
-                                             getOptionLabel={(opt) => opt.operatorName}
-                                             getOptionValue={(opt) => opt.operatorId}
-                                             error={touched.operatorName && Boolean(errors.operatorName)}
-                                             onBlur={() => setFieldTouched("operatorName", true, false)}
-                                          />
-                                          {touched.operatorName && errors.operatorName && (
-                                             <div className="text-red-500 text-xs mt-1">
-                                                {errors.operatorName}
-                                             </div>
-                                          )}
-                                       </div>
-                                    )}
+
                                     {/* Ground Handler (merged into Client & Payment step) */}
                                     {isGroundHandlerVisible && (
                                        <>
@@ -1473,363 +1500,353 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                  </div>
                               )}
 
-                              {/* STEP 4: Main Dates */}
+                              {/* STEP 4: Main Dates & Delivery Dates */}
                               {stepsConfig[step]?.id === 'dateTime' && (
                                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                    <div className="flex flex-col gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                                       {/* Arrival Block */}
-                                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                          <h3 className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                                             {langText.arrivalDateTime[lang]} <HelpTooltip text={fieldDescriptions.arrivalDate[lang]} />
-                                          </h3>
-                                          <div className="flex flex-col md:flex-row gap-4">
-                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                <DatePicker
-                                                   format="DD/MM/YYYY"
-                                                   value={values.arrivalDate}
-                                                   onChange={(newDate) => {
-                                                      if (!newDate?.isValid()) return;
-                                                      const updated = values.arrivalDate
-                                                         ? values.arrivalDate
-                                                            .set("year", newDate.year())
-                                                            .set("month", newDate.month())
-                                                            .set("date", newDate.date())
-                                                         : newDate;
-                                                      setFieldValue("arrivalDate", updated);
-                                                      setFieldTouched("arrivalDate", true, false);
-                                                   }}
-                                                   onClose={() => setFieldTouched("arrivalDate", true, false)}
-                                                   slotProps={{
-                                                      textField: {
-                                                         size: "small",
-                                                         fullWidth: true,
-                                                         error:
-                                                            touched.arrivalDate &&
-                                                            Boolean(errors.arrivalDate),
-                                                         sx: {
-                                                            backgroundColor: "white",
-                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                         },
+                                       {/* Arrival Date */}
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                             {lang === "EN" ? "Arrival Date (UTC)" : "تاريخ الوصول (UTC)"} <HelpTooltip text={fieldDescriptions.arrivalDate[lang]} />
+                                          </label>
+                                          <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                             <DatePicker
+                                                format="DD/MM/YYYY"
+                                                value={values.arrivalDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.arrivalDate
+                                                      ? values.arrivalDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue("arrivalDate", updated);
+                                                   setFieldTouched("arrivalDate", true, false);
+                                                }}
+                                                onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.arrivalDate && Boolean(errors.arrivalDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         "& .MuiPickersOutlinedInput-root": { height: "30px" },
                                                       },
-                                                   }}
-                                                />
-                                             </div>
-                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                <TimePicker
-                                                   ampm={false}
-                                                   format="HH:mm"
-                                                   value={values.arrivalDate}
-                                                   onChange={(newTime) => {
-                                                      if (!newTime?.isValid()) return;
-                                                      const updated = values.arrivalDate
-                                                         ? values.arrivalDate
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute())
-                                                         : dayjs()
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute());
-                                                      setFieldValue("arrivalDate", updated);
-                                                      setFieldTouched("arrivalDate", true, false);
-                                                   }}
-                                                   onClose={() => setFieldTouched("arrivalDate", true, false)}
-                                                   slotProps={{
-                                                      textField: {
-                                                         size: "small",
-                                                         fullWidth: true,
-                                                         error:
-                                                            touched.arrivalDate &&
-                                                            Boolean(errors.arrivalDate),
-                                                         sx: {
-                                                            backgroundColor: "white",
-                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                         },
-                                                      },
-                                                   }}
-                                                />
-                                             </div>
+                                                   },
+                                                }}
+                                             />
                                           </div>
                                           {errors.arrivalDate && touched.arrivalDate && typeof errors.arrivalDate === "string" && (
-                                             <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                                                <span className="text-xs font-semibold">{errors.arrivalDate}</span>
-                                             </div>
+                                             <div className="text-red-500 text-xs mt-1">{errors.arrivalDate}</div>
                                           )}
                                        </div>
 
-                                       {/* Departure Block */}
-                                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                          <h3 className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                                             {langText.departureDateTime?.[lang] ||
-                                                "Departure Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.departureDate[lang]} />
-                                          </h3>
-                                          <div className="flex flex-col md:flex-row gap-4">
-                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                       {/* Arrival Time */}
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                             {lang === "EN" ? "Arrival Time (UTC)" : "وقت الوصول (UTC)"}
+                                          </label>
+                                          <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                             <TimePicker
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.arrivalDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.arrivalDate
+                                                      ? values.arrivalDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue("arrivalDate", updated);
+                                                   setFieldTouched("arrivalDate", true, false);
+                                                }}
+                                                onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.arrivalDate && Boolean(errors.arrivalDate),
+                                                      sx: {
+
+                                                         backgroundColor: "white",
+                                                         "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         "& .MuiPickersOutlinedInput-root": { height: "30px" },
+
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+
+                                       {/* Arrival Delivery Date */}
+                                       {values.orderHeaderFlightType !== "Departure" && (
+                                          <div className="col-span-1">
+                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                                {lang === "EN" ? "Arrival Delivery Date" : "تاريخ تسليم الوصول"} <HelpTooltip text={fieldDescriptions.arrivalDelivery[lang]} />
+                                             </label>
+                                             <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
                                                 <DatePicker
+                                                   disabled={!values.arrivalDate}
                                                    format="DD/MM/YYYY"
-                                                   disablePast={false}
-                                                   value={values.departureDate}
+                                                   value={values.arrivalDeliveryDate}
                                                    onChange={(newDate) => {
                                                       if (!newDate?.isValid()) return;
-                                                      const updated = values.departureDate
-                                                         ? values.departureDate
+                                                      const updated = values.arrivalDeliveryDate
+                                                         ? values.arrivalDeliveryDate
                                                             .set("year", newDate.year())
                                                             .set("month", newDate.month())
                                                             .set("date", newDate.date())
                                                          : newDate;
-                                                      setFieldValue("departureDate", updated);
-                                                      setFieldTouched("departureDate", true, false);
+                                                      setFieldValue("arrivalDeliveryDate", updated);
+                                                      setFieldTouched("arrivalDeliveryDate", true, false);
                                                    }}
-                                                   onClose={() => setFieldTouched("departureDate", true, false)}
+                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
                                                          fullWidth: true,
-                                                         error:
-                                                            touched.departureDate &&
-                                                            Boolean(errors.departureDate),
+                                                         error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
                                                          sx: {
-                                                            backgroundColor: "white",
-                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            // backgroundColor: !values.arrivalDate ? "#f3f4f6" : "white",
+
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", minHeight: "30px", maxHeight: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            "& .MuiPickersOutlinedInput-root": { height: "30px" },
+
                                                          },
                                                       },
                                                    }}
                                                 />
                                              </div>
-                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                             {errors.arrivalDeliveryDate && touched.arrivalDeliveryDate && typeof errors.arrivalDeliveryDate === "string" && (
+                                                <div className="text-red-500 text-xs mt-1">{errors.arrivalDeliveryDate}</div>
+                                             )}
+                                          </div>
+                                       )}
+
+                                       {/* Arrival Delivery Time */}
+                                       {values.orderHeaderFlightType !== "Departure" && (
+                                          <div className="col-span-1">
+                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                                {lang === "EN" ? "Arrival Delivery Time" : "وقت تسليم الوصول"}
+                                             </label>
+                                             <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
                                                 <TimePicker
+                                                   disabled={!values.arrivalDate}
                                                    ampm={false}
                                                    format="HH:mm"
-                                                   value={values.departureDate}
+                                                   value={values.arrivalDeliveryDate}
                                                    onChange={(newTime) => {
                                                       if (!newTime?.isValid()) return;
-                                                      const updated = values.departureDate
-                                                         ? values.departureDate
+                                                      const updated = values.arrivalDeliveryDate
+                                                         ? values.arrivalDeliveryDate
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute())
                                                          : dayjs()
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute());
-                                                      setFieldValue("departureDate", updated);
-                                                      setFieldTouched("departureDate", true, false);
+                                                      setFieldValue("arrivalDeliveryDate", updated);
+                                                      setFieldTouched("arrivalDeliveryDate", true, false);
                                                    }}
-                                                   onClose={() => setFieldTouched("departureDate", true, false)}
+                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
                                                          fullWidth: true,
-                                                         error:
-                                                            touched.departureDate &&
-                                                            Boolean(errors.departureDate),
+                                                         error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
                                                          sx: {
-                                                            backgroundColor: "white",
-                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            // backgroundColor: !values.arrivalDate ? "#f3f4f6" : "white",
+
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", minHeight: "30px", maxHeight: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            "& .MuiPickersOutlinedInput-root": { height: "30px" },
+
                                                          },
                                                       },
                                                    }}
                                                 />
                                              </div>
                                           </div>
-                                          {errors.departureDate && touched.departureDate && typeof errors.departureDate === "string" && (
-                                             <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                                                <span className="text-xs font-semibold">{errors.departureDate}</span>
+                                       )}
+                                       {/* Departure Delivery Date */}
+                                       {values.orderHeaderFlightType !== "Arrival" && (
+                                          <div className="col-span-1">
+                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                                {lang === "EN" ? "Departure Delivery Date" : "تاريخ تسليم المغادرة"} <HelpTooltip text={fieldDescriptions.departureDelivery[lang]} />
+                                             </label>
+                                             <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <DatePicker
+                                                   disabled={!values.departureDate}
+                                                   format="DD/MM/YYYY"
+                                                   value={values.departureDeliveryDate}
+                                                   onChange={(newDate) => {
+                                                      if (!newDate?.isValid()) return;
+                                                      const updated = values.departureDeliveryDate
+                                                         ? values.departureDeliveryDate
+                                                            .set("year", newDate.year())
+                                                            .set("month", newDate.month())
+                                                            .set("date", newDate.date())
+                                                         : newDate;
+                                                      setFieldValue("departureDeliveryDate", updated);
+                                                      setFieldTouched("departureDeliveryDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                         sx: {
+                                                            // backgroundColor: !values.arrivalDate ? "#f3f4f6" : "white",
+
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", minHeight: "30px", maxHeight: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            "& .MuiPickersOutlinedInput-root": { height: "30px" },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
                                              </div>
+                                             {errors.departureDeliveryDate && touched.departureDeliveryDate && typeof errors.departureDeliveryDate === "string" && (
+                                                <div className="text-red-500 text-xs mt-1">{errors.departureDeliveryDate}</div>
+                                             )}
+                                          </div>
+                                       )}
+
+                                       {/* Departure Delivery Time */}
+                                       {values.orderHeaderFlightType !== "Arrival" && (
+                                          <div className="col-span-1">
+                                             <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                                {lang === "EN" ? "Departure Delivery Time" : "وقت تسليم المغادرة"}
+                                             </label>
+                                             <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <TimePicker
+                                                   disabled={!values.departureDate}
+                                                   ampm={false}
+                                                   format="HH:mm"
+                                                   value={values.departureDeliveryDate}
+                                                   onChange={(newTime) => {
+                                                      if (!newTime?.isValid()) return;
+                                                      const updated = values.departureDeliveryDate
+                                                         ? values.departureDeliveryDate
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute())
+                                                         : dayjs()
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute());
+                                                      setFieldValue("departureDeliveryDate", updated);
+                                                      setFieldTouched("departureDeliveryDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                         sx: {
+                                                            // backgroundColor: !values.arrivalDate ? "#f3f4f6" : "white",
+
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", minHeight: "30px", maxHeight: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            "& .MuiPickersOutlinedInput-root": { height: "30px" },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
+                                             </div>
+                                          </div>
+                                       )}
+
+                                       {/* Departure Date */}
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                             {lang === "EN" ? "Departure Date (UTC)" : "تاريخ المغادرة (UTC)"} <HelpTooltip text={fieldDescriptions.departureDate[lang]} />
+                                          </label>
+                                          <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                             <DatePicker
+                                                format="DD/MM/YYYY"
+                                                disablePast={false}
+                                                value={values.departureDate}
+                                                onChange={(newDate) => {
+                                                   if (!newDate?.isValid()) return;
+                                                   const updated = values.departureDate
+                                                      ? values.departureDate
+                                                         .set("year", newDate.year())
+                                                         .set("month", newDate.month())
+                                                         .set("date", newDate.date())
+                                                      : newDate;
+                                                   setFieldValue("departureDate", updated);
+                                                   setFieldTouched("departureDate", true, false);
+                                                }}
+                                                onClose={() => setFieldTouched("departureDate", true, false)}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.departureDate && Boolean(errors.departureDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         "& .MuiPickersOutlinedInput-root": { height: "30px" },
+
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                          {errors.departureDate && touched.departureDate && typeof errors.departureDate === "string" && (
+                                             <div className="text-red-500 text-xs mt-1">{errors.departureDate}</div>
                                           )}
                                        </div>
+
+                                       {/* Departure Time */}
+                                       <div className="col-span-1">
+                                          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                                             {lang === "EN" ? "Departure Time (UTC)" : "وقت المغادرة (UTC)"}
+                                          </label>
+                                          <div className="[&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                             <TimePicker
+                                                ampm={false}
+                                                format="HH:mm"
+                                                value={values.departureDate}
+                                                onChange={(newTime) => {
+                                                   if (!newTime?.isValid()) return;
+                                                   const updated = values.departureDate
+                                                      ? values.departureDate
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute())
+                                                      : dayjs()
+                                                         .set("hour", newTime.hour())
+                                                         .set("minute", newTime.minute());
+                                                   setFieldValue("departureDate", updated);
+                                                   setFieldTouched("departureDate", true, false);
+                                                }}
+                                                onClose={() => setFieldTouched("departureDate", true, false)}
+                                                slotProps={{
+                                                   textField: {
+                                                      size: "small",
+                                                      fullWidth: true,
+                                                      error: touched.departureDate && Boolean(errors.departureDate),
+                                                      sx: {
+                                                         backgroundColor: "white",
+                                                         "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         "& .MuiPickersOutlinedInput-root": { height: "30px" },
+                                                      },
+                                                   },
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+
+
+
                                     </div>
                                  </LocalizationProvider>
                               )}
-
-                              {/* Delivery Dates - merged into Date & Time step */}
-                              {stepsConfig[step]?.id === 'dateTime' && (
-                                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                    <div className="flex flex-col gap-6 mt-6">
-                                       {/* Arrival Delivery Block (Disabled if no Arrival Date in Step 3) */}
-                                       {values.orderHeaderFlightType !== "Departure" && (
-                                          <div
-                                             className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.arrivalDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
-                                          >
-                                             <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
-                                                <span className="flex items-center">
-                                                   {langText.arrivalDeliveryDateTime?.[lang] ||
-                                                      "Arrival Delivery Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.arrivalDelivery[lang]} />
-                                                </span>
-                                                {!values.arrivalDate && (
-                                                   <span className="text-xs text-red-500 font-normal">
-                                                      Requires Arrival Date
-                                                   </span>
-                                                )}
-                                             </h3>
-                                             <div className="flex flex-col md:flex-row gap-4">
-                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                   <DatePicker
-                                                      disabled={!values.arrivalDate}
-                                                      format="DD/MM/YYYY"
-                                                      value={values.arrivalDeliveryDate}
-                                                      onChange={(newDate) => {
-                                                         if (!newDate?.isValid()) return;
-                                                         const updated = values.arrivalDeliveryDate
-                                                            ? values.arrivalDeliveryDate
-                                                               .set("year", newDate.year())
-                                                               .set("month", newDate.month())
-                                                               .set("date", newDate.date())
-                                                            : newDate;
-                                                         setFieldValue("arrivalDeliveryDate", updated);
-                                                         setFieldTouched("arrivalDeliveryDate", true, false);
-                                                      }}
-                                                      onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
-                                                      slotProps={{
-                                                         textField: {
-                                                            size: "small",
-                                                            fullWidth: true,
-                                                            error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
-                                                            sx: {
-                                                               backgroundColor: !values.arrivalDate
-                                                                  ? "transparent"
-                                                                  : "white",
-                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                            },
-                                                         },
-                                                      }}
-                                                   />
-                                                </div>
-                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                   <TimePicker
-                                                      disabled={!values.arrivalDate}
-                                                      ampm={false}
-                                                      format="HH:mm"
-                                                      value={values.arrivalDeliveryDate}
-                                                      onChange={(newTime) => {
-                                                         if (!newTime?.isValid()) return;
-                                                         const updated = values.arrivalDeliveryDate
-                                                            ? values.arrivalDeliveryDate
-                                                               .set("hour", newTime.hour())
-                                                               .set("minute", newTime.minute())
-                                                            : dayjs()
-                                                               .set("hour", newTime.hour())
-                                                               .set("minute", newTime.minute());
-                                                         setFieldValue("arrivalDeliveryDate", updated);
-                                                         setFieldTouched("arrivalDeliveryDate", true, false);
-                                                      }}
-                                                      onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
-                                                      slotProps={{
-                                                         textField: {
-                                                            size: "small",
-                                                            fullWidth: true,
-                                                            error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
-                                                            sx: {
-                                                               backgroundColor: !values.arrivalDate
-                                                                  ? "transparent"
-                                                                  : "white",
-                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                            },
-                                                         },
-                                                      }}
-                                                   />
-                                                </div>
-                                             </div>
-                                             {errors.arrivalDeliveryDate && touched.arrivalDeliveryDate && (
-                                                <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                                                   <span className="text-xs font-semibold">{errors.arrivalDeliveryDate}</span>
-                                                </div>
-                                             )}
-                                          </div>
-                                       )}
-
-                                       {/* Departure Delivery Block (Disabled if no Departure Date in Step 3) */}
-                                       {values.orderHeaderFlightType !== "Arrival" && (
-                                          <div
-                                             className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.departureDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
-                                          >
-                                             <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
-                                                <span className="flex items-center">
-                                                   {langText.departureDeliveryDateTime?.[lang] ||
-                                                      "Departure Delivery Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.departureDelivery[lang]} />
-                                                </span>
-                                                {!values.departureDate && (
-                                                   <span className="text-xs text-red-500 font-normal">
-                                                      Requires Departure Date
-                                                   </span>
-                                                )}
-                                             </h3>
-                                             <div className="flex flex-col md:flex-row gap-4">
-                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                   <DatePicker
-                                                      disabled={!values.departureDate}
-                                                      format="DD/MM/YYYY"
-                                                      value={values.departureDeliveryDate}
-                                                      onChange={(newDate) => {
-                                                         if (!newDate?.isValid()) return;
-                                                         const updated = values.departureDeliveryDate
-                                                            ? values.departureDeliveryDate
-                                                               .set("year", newDate.year())
-                                                               .set("month", newDate.month())
-                                                               .set("date", newDate.date())
-                                                            : newDate;
-                                                         setFieldValue("departureDeliveryDate", updated);
-                                                         setFieldTouched("departureDeliveryDate", true, false);
-                                                      }}
-                                                      onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
-                                                      slotProps={{
-                                                         textField: {
-                                                            size: "small",
-                                                            fullWidth: true,
-                                                            error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
-                                                            sx: {
-                                                               backgroundColor: !values.departureDate
-                                                                  ? "transparent"
-                                                                  : "white",
-                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                            },
-                                                         },
-                                                      }}
-                                                   />
-                                                </div>
-                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
-                                                   <TimePicker
-                                                      disabled={!values.departureDate}
-                                                      ampm={false}
-                                                      format="HH:mm"
-                                                      value={values.departureDeliveryDate}
-                                                      onChange={(newTime) => {
-                                                         if (!newTime?.isValid()) return;
-                                                         const updated = values.departureDeliveryDate
-                                                            ? values.departureDeliveryDate
-                                                               .set("hour", newTime.hour())
-                                                               .set("minute", newTime.minute())
-                                                            : dayjs()
-                                                               .set("hour", newTime.hour())
-                                                               .set("minute", newTime.minute());
-                                                         setFieldValue("departureDeliveryDate", updated);
-                                                         setFieldTouched("departureDeliveryDate", true, false);
-                                                      }}
-                                                      onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
-                                                      slotProps={{
-                                                         textField: {
-                                                            size: "small",
-                                                            fullWidth: true,
-                                                            error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
-                                                            sx: {
-                                                               backgroundColor: !values.departureDate
-                                                                  ? "transparent"
-                                                                  : "white",
-                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
-                                                            },
-                                                         },
-                                                      }}
-                                                   />
-                                                </div>
-                                             </div>
-                                             {errors.departureDeliveryDate && touched.departureDeliveryDate && (
-                                                <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                                                   <span className="text-xs font-semibold">{errors.departureDeliveryDate}</span>
-                                                </div>
-                                             )}
-                                          </div>
-                                       )}
-                                    </div>
-                                 </LocalizationProvider>
-                              )}
-
 
                               {/* Navigation Footer (Extremely important for form flow) */}
                               <div className="mt-auto pt-5 mt-6 border-t border-gray-100 flex items-center justify-between">

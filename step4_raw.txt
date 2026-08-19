@@ -1,0 +1,359 @@
+{/* STEP 4: Main Dates */}
+                              {stepsConfig[step]?.id === 'dateTime' && (
+                                 <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                    <div className="flex flex-col gap-6">
+
+                                       {/* Arrival Block */}
+                                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                          <h3 className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                                             {langText.arrivalDateTime[lang]} <HelpTooltip text={fieldDescriptions.arrivalDate[lang]} />
+                                          </h3>
+                                          <div className="flex flex-col md:flex-row gap-4">
+                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <DatePicker
+                                                   format="DD/MM/YYYY"
+                                                   value={values.arrivalDate}
+                                                   onChange={(newDate) => {
+                                                      if (!newDate?.isValid()) return;
+                                                      const updated = values.arrivalDate
+                                                         ? values.arrivalDate
+                                                            .set("year", newDate.year())
+                                                            .set("month", newDate.month())
+                                                            .set("date", newDate.date())
+                                                         : newDate;
+                                                      setFieldValue("arrivalDate", updated);
+                                                      setFieldTouched("arrivalDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error:
+                                                            touched.arrivalDate &&
+                                                            Boolean(errors.arrivalDate),
+                                                         sx: {
+                                                            backgroundColor: "white",
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
+                                             </div>
+                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <TimePicker
+                                                   ampm={false}
+                                                   format="HH:mm"
+                                                   value={values.arrivalDate}
+                                                   onChange={(newTime) => {
+                                                      if (!newTime?.isValid()) return;
+                                                      const updated = values.arrivalDate
+                                                         ? values.arrivalDate
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute())
+                                                         : dayjs()
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute());
+                                                      setFieldValue("arrivalDate", updated);
+                                                      setFieldTouched("arrivalDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error:
+                                                            touched.arrivalDate &&
+                                                            Boolean(errors.arrivalDate),
+                                                         sx: {
+                                                            backgroundColor: "white",
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
+                                             </div>
+                                          </div>
+                                          {errors.arrivalDate && touched.arrivalDate && typeof errors.arrivalDate === "string" && (
+                                             <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                                <span className="text-xs font-semibold">{errors.arrivalDate}</span>
+                                             </div>
+                                          )}
+                                       </div>
+
+                                       {/* Departure Block */}
+                                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                          <h3 className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                                             {langText.departureDateTime?.[lang] ||
+                                                "Departure Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.departureDate[lang]} />
+                                          </h3>
+                                          <div className="flex flex-col md:flex-row gap-4">
+                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <DatePicker
+                                                   format="DD/MM/YYYY"
+                                                   disablePast={false}
+                                                   value={values.departureDate}
+                                                   onChange={(newDate) => {
+                                                      if (!newDate?.isValid()) return;
+                                                      const updated = values.departureDate
+                                                         ? values.departureDate
+                                                            .set("year", newDate.year())
+                                                            .set("month", newDate.month())
+                                                            .set("date", newDate.date())
+                                                         : newDate;
+                                                      setFieldValue("departureDate", updated);
+                                                      setFieldTouched("departureDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("departureDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error:
+                                                            touched.departureDate &&
+                                                            Boolean(errors.departureDate),
+                                                         sx: {
+                                                            backgroundColor: "white",
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
+                                             </div>
+                                             <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                <TimePicker
+                                                   ampm={false}
+                                                   format="HH:mm"
+                                                   value={values.departureDate}
+                                                   onChange={(newTime) => {
+                                                      if (!newTime?.isValid()) return;
+                                                      const updated = values.departureDate
+                                                         ? values.departureDate
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute())
+                                                         : dayjs()
+                                                            .set("hour", newTime.hour())
+                                                            .set("minute", newTime.minute());
+                                                      setFieldValue("departureDate", updated);
+                                                      setFieldTouched("departureDate", true, false);
+                                                   }}
+                                                   onClose={() => setFieldTouched("departureDate", true, false)}
+                                                   slotProps={{
+                                                      textField: {
+                                                         size: "small",
+                                                         fullWidth: true,
+                                                         error:
+                                                            touched.departureDate &&
+                                                            Boolean(errors.departureDate),
+                                                         sx: {
+                                                            backgroundColor: "white",
+                                                            "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                         },
+                                                      },
+                                                   }}
+                                                />
+                                             </div>
+                                          </div>
+                                          {errors.departureDate && touched.departureDate && typeof errors.departureDate === "string" && (
+                                             <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                                <span className="text-xs font-semibold">{errors.departureDate}</span>
+                                             </div>
+                                          )}
+                                       </div>
+                                    </div>
+                                 </LocalizationProvider>
+                              )}
+
+                              {/* Delivery Dates - merged into Date & Time step */}
+                              {stepsConfig[step]?.id === 'dateTime' && (
+                                 <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                    <div className="flex flex-col gap-6 mt-6">
+                                       {/* Arrival Delivery Block (Disabled if no Arrival Date in Step 3) */}
+                                       {values.orderHeaderFlightType !== "Departure" && (
+                                          <div
+                                             className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.arrivalDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
+                                          >
+                                             <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                                                <span className="flex items-center">
+                                                   {langText.arrivalDeliveryDateTime?.[lang] ||
+                                                      "Arrival Delivery Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.arrivalDelivery[lang]} />
+                                                </span>
+                                                {!values.arrivalDate && (
+                                                   <span className="text-xs text-red-500 font-normal">
+                                                      Requires Arrival Date
+                                                   </span>
+                                                )}
+                                             </h3>
+                                             <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                   <DatePicker
+                                                      disabled={!values.arrivalDate}
+                                                      format="DD/MM/YYYY"
+                                                      value={values.arrivalDeliveryDate}
+                                                      onChange={(newDate) => {
+                                                         if (!newDate?.isValid()) return;
+                                                         const updated = values.arrivalDeliveryDate
+                                                            ? values.arrivalDeliveryDate
+                                                               .set("year", newDate.year())
+                                                               .set("month", newDate.month())
+                                                               .set("date", newDate.date())
+                                                            : newDate;
+                                                         setFieldValue("arrivalDeliveryDate", updated);
+                                                         setFieldTouched("arrivalDeliveryDate", true, false);
+                                                      }}
+                                                      onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
+                                                      slotProps={{
+                                                         textField: {
+                                                            size: "small",
+                                                            fullWidth: true,
+                                                            error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
+                                                            sx: {
+                                                               backgroundColor: !values.arrivalDate
+                                                                  ? "transparent"
+                                                                  : "white",
+                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            },
+                                                         },
+                                                      }}
+                                                   />
+                                                </div>
+                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                   <TimePicker
+                                                      disabled={!values.arrivalDate}
+                                                      ampm={false}
+                                                      format="HH:mm"
+                                                      value={values.arrivalDeliveryDate}
+                                                      onChange={(newTime) => {
+                                                         if (!newTime?.isValid()) return;
+                                                         const updated = values.arrivalDeliveryDate
+                                                            ? values.arrivalDeliveryDate
+                                                               .set("hour", newTime.hour())
+                                                               .set("minute", newTime.minute())
+                                                            : dayjs()
+                                                               .set("hour", newTime.hour())
+                                                               .set("minute", newTime.minute());
+                                                         setFieldValue("arrivalDeliveryDate", updated);
+                                                         setFieldTouched("arrivalDeliveryDate", true, false);
+                                                      }}
+                                                      onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
+                                                      slotProps={{
+                                                         textField: {
+                                                            size: "small",
+                                                            fullWidth: true,
+                                                            error: touched.arrivalDeliveryDate && Boolean(errors.arrivalDeliveryDate),
+                                                            sx: {
+                                                               backgroundColor: !values.arrivalDate
+                                                                  ? "transparent"
+                                                                  : "white",
+                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            },
+                                                         },
+                                                      }}
+                                                   />
+                                                </div>
+                                             </div>
+                                             {errors.arrivalDeliveryDate && touched.arrivalDeliveryDate && (
+                                                <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                                   <span className="text-xs font-semibold">{errors.arrivalDeliveryDate}</span>
+                                                </div>
+                                             )}
+                                          </div>
+                                       )}
+
+                                       {/* Departure Delivery Block (Disabled if no Departure Date in Step 3) */}
+                                       {values.orderHeaderFlightType !== "Arrival" && (
+                                          <div
+                                             className={`p-4 rounded-xl border border-gray-100 transition-colors ${!values.departureDate ? "bg-gray-100 opacity-60" : "bg-gray-50"}`}
+                                          >
+                                             <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                                                <span className="flex items-center">
+                                                   {langText.departureDeliveryDateTime?.[lang] ||
+                                                      "Departure Delivery Date & Time (UTC)"} <HelpTooltip text={fieldDescriptions.departureDelivery[lang]} />
+                                                </span>
+                                                {!values.departureDate && (
+                                                   <span className="text-xs text-red-500 font-normal">
+                                                      Requires Departure Date
+                                                   </span>
+                                                )}
+                                             </h3>
+                                             <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                   <DatePicker
+                                                      disabled={!values.departureDate}
+                                                      format="DD/MM/YYYY"
+                                                      value={values.departureDeliveryDate}
+                                                      onChange={(newDate) => {
+                                                         if (!newDate?.isValid()) return;
+                                                         const updated = values.departureDeliveryDate
+                                                            ? values.departureDeliveryDate
+                                                               .set("year", newDate.year())
+                                                               .set("month", newDate.month())
+                                                               .set("date", newDate.date())
+                                                            : newDate;
+                                                         setFieldValue("departureDeliveryDate", updated);
+                                                         setFieldTouched("departureDeliveryDate", true, false);
+                                                      }}
+                                                      onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                      slotProps={{
+                                                         textField: {
+                                                            size: "small",
+                                                            fullWidth: true,
+                                                            error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                            sx: {
+                                                               backgroundColor: !values.departureDate
+                                                                  ? "transparent"
+                                                                  : "white",
+                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            },
+                                                         },
+                                                      }}
+                                                   />
+                                                </div>
+                                                <div className="flex-1 [&_.MuiOutlinedInput-root]:!rounded-[50px] [&_fieldset]:!rounded-[50px] [&_.MuiOutlinedInput-root]:!min-h-[30px] [&_.MuiOutlinedInput-root]:!h-[30px] [&_.MuiOutlinedInput-root]:!text-[12px]">
+                                                   <TimePicker
+                                                      disabled={!values.departureDate}
+                                                      ampm={false}
+                                                      format="HH:mm"
+                                                      value={values.departureDeliveryDate}
+                                                      onChange={(newTime) => {
+                                                         if (!newTime?.isValid()) return;
+                                                         const updated = values.departureDeliveryDate
+                                                            ? values.departureDeliveryDate
+                                                               .set("hour", newTime.hour())
+                                                               .set("minute", newTime.minute())
+                                                            : dayjs()
+                                                               .set("hour", newTime.hour())
+                                                               .set("minute", newTime.minute());
+                                                         setFieldValue("departureDeliveryDate", updated);
+                                                         setFieldTouched("departureDeliveryDate", true, false);
+                                                      }}
+                                                      onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                      slotProps={{
+                                                         textField: {
+                                                            size: "small",
+                                                            fullWidth: true,
+                                                            error: touched.departureDeliveryDate && Boolean(errors.departureDeliveryDate),
+                                                            sx: {
+                                                               backgroundColor: !values.departureDate
+                                                                  ? "transparent"
+                                                                  : "white",
+                                                               "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
+                                                            },
+                                                         },
+                                                      }}
+                                                   />
+                                                </div>
+                                             </div>
+                                             {errors.departureDeliveryDate && touched.departureDeliveryDate && (
+                                                <div className="mt-3 flex items-center gap-1.5 text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                                   <span className="text-xs font-semibold">{errors.departureDeliveryDate}</span>
+                                                </div>
+                                             )}
+                                          </div>
+                                       )}
+                                    </div>
+                                 </LocalizationProvider>
+                              )}
+
+
+                              
