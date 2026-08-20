@@ -105,17 +105,17 @@ export default function ProfileCompletionPopup() {
     let schema = {};
     // Only enforce bank fields if bank payment method is currently selected inside the popup
     schema.paymentInfoAccountHolder = Yup.string().when("paymentMethodId", {
-      is: 2,
+      is: (val) => val === 3 || val === 2,
       then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
       otherwise: () => Yup.string(),
     });
     schema.paymentInfoIBan = Yup.string().when("paymentMethodId", {
-      is: 2,
+      is: (val) => val === 3 || val === 2,
       then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
       otherwise: () => Yup.string(),
     });
     schema.paymentInfoSwiftCode = Yup.string().when("paymentMethodId", {
-      is: 2,
+      is: (val) => val === 3 || val === 2,
       then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
       otherwise: () => Yup.string(),
     });
@@ -153,7 +153,7 @@ export default function ProfileCompletionPopup() {
       paymentInfoSwiftCode: mySettings?.paymentInfoSwiftCode || "",
     },
     validationSchema,
-    onSubmit: (values) => {
+    onSubmit: (values, { setSubmitting }) => {
       // Build payload matching Summary.jsx
       const payload = {
         customerName: mySettings?.customerName || "",
@@ -202,17 +202,22 @@ export default function ProfileCompletionPopup() {
           onlineOrderToast.loading(langText.updatingProfile?.[lang] || "Updating profile...", { id: "profile-completion" });
         },
         onSuccess: (res) => {
-          // if (res?.data?.isValid) {
+          setSubmitting(false);
           onlineOrderToast.success(langText.savedSuccessfully?.[lang] || "Saved successfully!", { id: "profile-completion" });
           queryClient.invalidateQueries(["mySettings"]);
           dismiss();
-          // } else {
-          //   onlineOrderToast.error(res?.data?.responseMessage || "Failed to save", { id: "profile-completion" });
-          // }
         },
         onError: (err) => {
           console.error(err);
-          onlineOrderToast.error("An error occurred", { id: "profile-completion" });
+          setSubmitting(false);
+          const errorMsg =
+            err?.response?.data?.message ||
+            err?.response?.data?.responseMessage ||
+            err?.response?.data?.title ||
+            (typeof err?.response?.data === "string" ? err?.response?.data : null) ||
+            err?.message ||
+            (lang === "AR" ? "فشل حفظ البيانات، يرجى المحاولة مرة أخرى" : "Failed to update profile. Please try again.");
+          onlineOrderToast.error(errorMsg, { id: "profile-completion" });
         },
       });
     },
@@ -490,7 +495,7 @@ export default function ProfileCompletionPopup() {
                     }}
                     {...formik.getFieldProps("groundHandlerPhone")}
                     onChange={(e) => {
-                      e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
+                      e.target.value = e.target.value.replace(/[^\d+]/g, "");
                       formik.handleChange(e);
                     }}
                   />
@@ -518,7 +523,7 @@ export default function ProfileCompletionPopup() {
               )}
             </div>
 
-            {missing.paymentMethodId && formik.values.paymentMethodId === 3 && (
+            {missing.paymentMethodId && (formik.values.paymentMethodId === 3 || formik.values.paymentMethodId === 2) && (
               <div className="rounded-xl p-3 flex flex-col gap-3 mt-1" style={{ border: "1px solid var(--color-light-gray)", background: "rgba(197,167,109,0.02)" }}>
                 <div className="flex items-center gap-2 mb-1">
                   <FaUniversity size={14} style={{ color: "var(--color-primary)" }} />
@@ -531,10 +536,10 @@ export default function ProfileCompletionPopup() {
                   {[
                     { field: "paymentInfoAccountHolder", label: lang === "AR" ? "اسم صاحب الحساب" : "Account Holder Name" },
                     { field: "paymentInfoAccountBankName", label: lang === "AR" ? "اسم البنك" : "Bank Name" },
-                    { field: "paymentInfoAccountNumber", label: lang === "AR" ? "رقم الحساب" : "Account Number" },
+                    { field: "paymentInfoAccountNumber", label: lang === "AR" ? "رقم الحساب" : "Account Number", isNumber: true },
                     { field: "paymentInfoIBan", label: "IBAN" },
                     { field: "paymentInfoSwiftCode", label: "Swift Code" },
-                  ].map(({ field, label }) => (
+                  ].map(({ field, label, isNumber }) => (
                     <TextField
                       key={field}
                       label={label}
@@ -542,7 +547,11 @@ export default function ProfileCompletionPopup() {
                       fullWidth
                       {...formik.getFieldProps(field)}
                       onChange={(e) => {
-                        e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
+                        if (isNumber) {
+                          e.target.value = e.target.value.replace(/\D/g, "");
+                        } else {
+                          e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
+                        }
                         formik.handleChange(e);
                       }}
                       error={formik.touched[field] && Boolean(formik.errors[field])}
@@ -563,7 +572,7 @@ export default function ProfileCompletionPopup() {
           <button
             type="button"
             onClick={() => dismiss()}
-            className="px-6 py-2.5 bg-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-300 transition-colors"
+            className="px-6 py-2.5 bg-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-300 transition-colors cursor-pointer"
           >
             {lang === "AR" ? "إغلاق" : "Close"}
           </button>
@@ -571,7 +580,7 @@ export default function ProfileCompletionPopup() {
             type="submit"
             form="profile-completion-form"
             disabled={formik.isSubmitting || editMySettingsMutation.isPending}
-            className="px-8 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-md"
+            className="px-8 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-md cursor-pointer"
           >
             {formik.isSubmitting || editMySettingsMutation.isPending
               ? (lang === "AR" ? "جاري الحفظ..." : "Saving...")

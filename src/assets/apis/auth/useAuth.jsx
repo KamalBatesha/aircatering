@@ -16,23 +16,26 @@ const useAuth = () => {
       return;
     }
 
-    let user;
+    let storedUser;
     try {
-      user = JSON.parse(localStorage.getItem("user"));
+      storedUser = JSON.parse(localStorage.getItem("user"));
     } catch {
-      user = null;
+      storedUser = null;
     }
 
-    if (!user) {
-      logout();
-      // clearCart();
+    if (!storedUser) {
+      if (user) {
+        logout();
+      }
       setLoading(false);
       return;
     }
 
-    login(user);
+    if (!user || user?.token !== storedUser?.token) {
+      login(storedUser);
+    }
     setLoading(false);
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   // 2. Unconditional token refresh every 3 minutes
   useEffect(() => {

@@ -1,5 +1,6 @@
 import axios from "axios";
 import axiosInstance from "../axios";
+import { clearGuestStorage } from "../../store/authStore";
 
 export function Register(data) {
   return axiosInstance
@@ -245,6 +246,7 @@ export function AuthLogout() {
     .post("/api/Authonticate/Logout")
     .then(async (response) => {
       localStorage.removeItem("user");
+      clearGuestStorage();
       onlineOrderToast.success("Logout Successfully", { id: 1 });
       window.location.reload();
       //console.log(response);

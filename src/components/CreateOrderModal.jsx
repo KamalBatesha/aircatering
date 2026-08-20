@@ -4,7 +4,7 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { FaTimes, FaArrowRight, FaArrowLeft, FaCheck, FaUniversity } from 'react-icons/fa';
+import { FaTimes, FaArrowRight, FaArrowLeft, FaCheck, FaUniversity, FaQuestionCircle } from 'react-icons/fa';
 import { DatePicker, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -329,7 +329,7 @@ import { getMyAirCrafts, getMyBillTo, getMyFlightNumbers, getMyRegistrations, Ge
 import { useNavigate } from 'react-router-dom';
 import HelpTooltip from './HelpTooltip';
 import { fieldDescriptions } from '../assets/constants/fieldDescriptions';
-import useAuthStore from '../assets/store/authStore';
+import useAuthStore, { clearGuestStorage } from '../assets/store/authStore';
 import { GetCountriesCodes } from '../assets/apis/country/Country';
 
 const createDateWithTime = (existingVal, newDate) => {
@@ -357,6 +357,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    const [step, setStep] = useState(0);
    const [maxReachedStep, setMaxReachedStep] = useState(0);
    const [isGuestSubmitted, setIsGuestSubmitted] = useState(false);
+   const [showGuestConfirmModal, setShowGuestConfirmModal] = useState(false);
+   const [pendingGuestData, setPendingGuestData] = useState(null);
    const { user } = useAuthStore();
    const { cart, clearCart } = useCartStore((state) => state);
 
@@ -630,6 +632,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    useEffect(() => {
       if (!isOpen) {
          originalProfileSettings.current = null;
+         setShowGuestConfirmModal(false);
+         setPendingGuestData(null);
       } else {
          if (!user) {
             const hasSubmitted = !!localStorage.getItem("GUEST_SUBMITTED_ORDER");
@@ -671,6 +675,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             }
          } else {
             setIsGuestSubmitted(false);
+            clearGuestStorage();
             setStep(0);
             setMaxReachedStep(0);
          }
@@ -695,6 +700,51 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    if (!isOpen) return null;
 
    const currentValidationSchema = validationSchemas[step];
+
+   const handleConfirmGuestSubmit = () => {
+      if (!pendingGuestData) return;
+      const { guestPayload, values, step: currentStep, maxReachedStep: currentMaxStep, actions } = pendingGuestData;
+      setShowGuestConfirmModal(false);
+
+      onlineOrderToast.loading(lang == "EN" ? "Sending Request..." : "...جاري إرسال الطلب", { id: "creatingOrder" });
+      guestMutation.mutate(guestPayload, {
+         onSuccess: () => {
+            onlineOrderToast.success(lang == "EN" ? "Request sent successfully" : "تم إرسال الطلب بنجاح", { id: "creatingOrder" });
+            localStorage.setItem("GUEST_SUBMITTED_ORDER", serializeGuestDraft(values, currentStep, currentMaxStep));
+            sessionStorage.removeItem(GUEST_DRAFT_KEY);
+            setIsGuestSubmitted(true);
+            // clearCart();
+            actions?.setSubmitting(false);
+            setPendingGuestData(null);
+         },
+         onError: (error) => {
+            const errorMsg = error?.response?.data?.message?.toLowerCase() || "";
+            console.log("error", errorMsg);
+            if (errorMsg === "email already registered") { onlineOrderToast.error(lang == "EN" ? "email is already registered" : "البريد الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+            else if (errorMsg === "mobile number already registered.") { onlineOrderToast.error(lang == "EN" ? "mobile number is already registered" : "رقم الهاتف مسجل بالفعل", { id: "creatingOrder" }); }
+            else if (errorMsg === "company website already registered.") { onlineOrderToast.error(lang == "EN" ? "company website is already registered" : "الموقع الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+            else if (errorMsg.includes("you have already registered and placed an order with us")) { 
+                onlineOrderToast.error(
+                    lang == "EN" 
+                        ? "You have already registered and placed an order with us. Please log in to your account to access your order details." 
+                        : "لقد قمت بالتسجيل مسبقاً وطلب أوردر معنا. يرجى تسجيل الدخول إلى حسابك للوصول إلى تفاصيل طلبك.", 
+                    { id: "creatingOrder", duration: 30000 }
+                ); 
+            }
+            else { onlineOrderToast.error(lang == "EN" ? (error?.response?.data?.message || "Failed to send request") : "فشل إرسال الطلب", { id: "creatingOrder" }); }
+            actions?.setSubmitting(false);
+            setPendingGuestData(null);
+         }
+      });
+   };
+
+   const handleCancelGuestSubmit = () => {
+      if (pendingGuestData?.actions) {
+         pendingGuestData.actions.setSubmitting(false);
+      }
+      setShowGuestConfirmModal(false);
+      setPendingGuestData(null);
+   };
 
    const handleSubmit = (values, actions) => {
       const maxSteps = stepsConfig.length - 1;
@@ -828,34 +878,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                   orderHeaderClientMenuHeaderId: 0,
                })) || []
             };
-            onlineOrderToast.loading(lang == "EN" ? "Sending Request..." : "...جاري إرسال الطلب", { id: "creatingOrder" });
-            guestMutation.mutate(guestPayload, {
-               onSuccess: () => {
-                  onlineOrderToast.success(lang == "EN" ? "Request sent successfully" : "تم إرسال الطلب بنجاح", { id: "creatingOrder" });
-                  localStorage.setItem("GUEST_SUBMITTED_ORDER", serializeGuestDraft(values, step, maxReachedStep));
-                  sessionStorage.removeItem(GUEST_DRAFT_KEY);
-                  setIsGuestSubmitted(true);
-                  // clearCart();
-                  actions.setSubmitting(false);
-               },
-               onError: (error) => {
-                  const errorMsg = error?.response?.data?.message?.toLowerCase() || "";
-                  console.log("error", errorMsg);
-                  if (errorMsg === "email already registered") { onlineOrderToast.error(lang == "EN" ? "email is already registered" : "البريد الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
-                  else if (errorMsg === "mobile number already registered.") { onlineOrderToast.error(lang == "EN" ? "mobile number is already registered" : "رقم الهاتف مسجل بالفعل", { id: "creatingOrder" }); }
-                  else if (errorMsg === "company website already registered.") { onlineOrderToast.error(lang == "EN" ? "company website is already registered" : "الموقع الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
-                  else if (errorMsg.includes("you have already registered and placed an order with us")) { 
-                      onlineOrderToast.error(
-                          lang == "EN" 
-                              ? "You have already registered and placed an order with us. Please log in to your account to access your order details." 
-                              : "لقد قمت بالتسجيل مسبقاً وطلب أوردر معنا. يرجى تسجيل الدخول إلى حسابك للوصول إلى تفاصيل طلبك.", 
-                          { id: "creatingOrder", duration: 30000 }
-                      ); 
-                  }
-                  else { onlineOrderToast.error(lang == "EN" ? (error?.response?.data?.message || "Failed to send request") : "فشل إرسال الطلب", { id: "creatingOrder" }); }
-                  actions.setSubmitting(false);
-               }
-            });
+
+            setPendingGuestData({ guestPayload, values, step, maxReachedStep, actions });
+            setShowGuestConfirmModal(true);
+            actions.setSubmitting(false);
          } else {
             onlineOrderToast.loading(lang == "EN" ? "Creating Order..." : "...جاري إنشاء الطلب", { id: "creatingOrder" });
 
@@ -951,13 +977,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                      orderHeaderCrewNum: "",
                      orderHeaderArrivalPaxnum: "",
                      orderHeaderArrivalCrewNum: "",
-                     orderHeaderFlightType: computedFlightType,
                      paymentInfoAccountBankName: profileSettings?.paymentInfoAccountBankName || "",
                      paymentInfoAccountNumber: profileSettings?.paymentInfoAccountNumber || "",
                      paymentInfoIBan: profileSettings?.paymentInfoIBan || "",
                      paymentInfoSwiftCode: profileSettings?.paymentInfoSwiftCode || "",
-                     orderHeaderIsDepartur: computedFlightType === "Departure" || computedFlightType === "Both",
-                     orderHeaderIsArrival: computedFlightType === "Arrival" || computedFlightType === "Both",
 
                      orderHeadearGroundHandlerId: profileSettings?.groundHandlerId ?? 0,
                      orderHeadearGroundHandlerName: profileSettings?.groundHandlerName ?? "",
@@ -1917,6 +1940,52 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                </Formik>
             </div>
          </div>
+
+         {/* Guest Confirmation Popup */}
+         {showGuestConfirmModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+               <div 
+                  dir={lang === "AR" ? "rtl" : "ltr"}
+                  className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border border-gray-100"
+               >
+                  <div className="w-14 h-14 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                     <FaQuestionCircle size={28} />
+                  </div>
+
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">
+                     {lang === "AR" ? "تأكيد إرسال الطلب" : "Confirm Order Submission"}
+                  </h3>
+
+                  <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                     {lang === "AR" 
+                        ? "هل أنت متأكد من إرسال الطلب الآن، أم ترغب في مراجعة البيانات التي أدخلتها أولاً؟" 
+                        : "Are you sure you want to submit the order now, or would you like to review what you entered before submitting?"}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-3">
+                     <button
+                        type="button"
+                        onClick={handleCancelGuestSubmit}
+                        className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
+                     >
+                        <FaArrowLeft size={13} className={lang === "AR" ? "rotate-180" : ""} />
+                        {lang === "AR" ? "مراجعة الطلب" : "Review Details"}
+                     </button>
+                     <button
+                        type="button"
+                        onClick={handleConfirmGuestSubmit}
+                        disabled={guestMutation.isPending}
+                        className="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                     >
+                        <FaCheck size={13} />
+                        {guestMutation.isPending 
+                           ? (lang === "AR" ? "جاري الإرسال..." : "Submitting...") 
+                           : (lang === "AR" ? "تأكيد وإرسال" : "Confirm & Submit")}
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
    );
 }

@@ -449,6 +449,24 @@ function Navbar() {
                 </div>
               )}
 
+              {isLogin && (
+                <button
+                  onClick={() => {
+                    navigate("/cart");
+                  }}
+                  className="relative bg-primary rounded-full flex items-center justify-center text-white cursor-pointer p-2 h-10 w-10"
+                >
+                  <FaBagShopping className="text-xl" />
+                  {cart?.length > 0 && (
+                    <div className="w-7 h-7 rounded-full bottom-[65%] start-[65%] absolute bg-white border border-secondary flex items-center justify-center aspect-square">
+                      {lang == "EN"
+                        ? getTotalItems()
+                        : toArabicNumbers(getTotalItems())}
+                    </div>
+                  )}
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setUserPopUp(
@@ -522,24 +540,6 @@ function Navbar() {
                   </ul>
                 </div>
               </button>
-
-              {isLogin && (
-                <button
-                  onClick={() => {
-                    navigate("/cart");
-                  }}
-                  className="relative bg-primary rounded-full flex items-center justify-center text-white cursor-pointer p-2 h-10 w-10"
-                >
-                  <FaBagShopping className="text-xl" />
-                  {cart?.length > 0 && (
-                    <div className="w-7 h-7 rounded-full bottom-[65%] start-[65%] absolute bg-white border border-secondary flex items-center justify-center aspect-square">
-                      {lang == "EN"
-                        ? getTotalItems()
-                        : toArabicNumbers(getTotalItems())}
-                    </div>
-                  )}
-                </button>
-              )}
 
               {/* {getTotalPrice() < 80 && isLogin && (
                 <p className=" animate-flash-text text-sm text-center">
