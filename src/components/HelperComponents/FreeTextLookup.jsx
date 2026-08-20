@@ -7,9 +7,11 @@ export default function FreeTextLookup({
   valueId,
   valueName,
   onChange,
+  onBlur,
   getOptionLabel = (option) => option?.label || "",
   getOptionValue = (option) => option?.id,
   error,
+  helperText,
   placeholder,
   disabled = false,
   uppercase = false,
@@ -90,6 +92,7 @@ export default function FreeTextLookup({
         <TextField
           value={inputValue}
           onChange={handleInputChange}
+          onBlur={onBlur}
           onFocus={(e) => {
             if (!disabled) {
               setIsOpen(true);
@@ -98,6 +101,7 @@ export default function FreeTextLookup({
           }}
           size="small"
           error={error}
+          helperText={helperText}
           disabled={disabled}
           placeholder={placeholder}
           fullWidth

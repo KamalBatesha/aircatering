@@ -103,21 +103,60 @@ export default function ProfileCompletionPopup() {
   // 4. Validation Schema
   const validationSchema = useMemo(() => {
     let schema = {};
+
+    schema.cateringEmail = Yup.string()
+      .email(langText.pleaseEnterAValidEmailAddress?.[lang] || (lang === "AR" ? "يرجى إدخال بريد إلكتروني صالح" : "Please enter a valid email address"))
+      .nullable();
+
+    schema.invoicingEmail = Yup.string()
+      .email(langText.pleaseEnterAValidEmailAddress?.[lang] || (lang === "AR" ? "يرجى إدخال بريد إلكتروني صالح" : "Please enter a valid email address"))
+      .nullable();
+
+    schema.flightName = Yup.string()
+      .matches(/^[A-Za-z0-9/\s-]{0,30}$/, lang === "AR" ? "رقم الرحلة غير صالح (أحرف إنجليزية، أرقام، /، -)" : "Invalid Flight Number format")
+      .nullable();
+
+    schema.registrationName = Yup.string()
+      .matches(/^[A-Za-z0-9/\s-]{0,30}$/, lang === "AR" ? "رقم التسجيل غير صالح (أحرف إنجليزية، أرقام، /، -)" : "Invalid Registration format")
+      .nullable();
+
+    schema.aircraftTypeName = Yup.string()
+      .matches(/^[A-Za-z0-9/\s-]{0,30}$/, lang === "AR" ? "نوع الطائرة غير صالح (أحرف إنجليزية، أرقام، /، -)" : "Invalid Aircraft Type format")
+      .nullable();
+
+    schema.groundHandlerEmail = Yup.string()
+      .email(langText.pleaseEnterAValidEmailAddress?.[lang] || (lang === "AR" ? "يرجى إدخال بريد إلكتروني صالح" : "Please enter a valid email address"))
+      .nullable();
+
+    schema.groundHandlerPhone = Yup.string()
+      .matches(/^[+\d\s-]{0,25}$/, lang === "AR" ? "رقم هاتف غير صالح" : "Invalid phone number format")
+      .nullable();
+
     // Only enforce bank fields if bank payment method is currently selected inside the popup
     schema.paymentInfoAccountHolder = Yup.string().when("paymentMethodId", {
       is: (val) => val === 3 || val === 2,
-      then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
-      otherwise: () => Yup.string(),
+      then: () => Yup.string().required(lang === "AR" ? "اسم صاحب الحساب مطلوب" : "Account Holder Name is required"),
+      otherwise: () => Yup.string().nullable(),
+    });
+    schema.paymentInfoAccountBankName = Yup.string().when("paymentMethodId", {
+      is: (val) => val === 3 || val === 2,
+      then: () => Yup.string().required(lang === "AR" ? "اسم البنك مطلوب" : "Bank Name is required"),
+      otherwise: () => Yup.string().nullable(),
+    });
+    schema.paymentInfoAccountNumber = Yup.string().when("paymentMethodId", {
+      is: (val) => val === 3 || val === 2,
+      then: () => Yup.string().required(lang === "AR" ? "رقم الحساب مطلوب" : "Account Number is required").matches(/^\d+$/, lang === "AR" ? "أرقام فقط" : "Digits only"),
+      otherwise: () => Yup.string().nullable(),
     });
     schema.paymentInfoIBan = Yup.string().when("paymentMethodId", {
       is: (val) => val === 3 || val === 2,
-      then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
-      otherwise: () => Yup.string(),
+      then: () => Yup.string().required(lang === "AR" ? "IBAN مطلوب" : "IBAN is required"),
+      otherwise: () => Yup.string().nullable(),
     });
     schema.paymentInfoSwiftCode = Yup.string().when("paymentMethodId", {
       is: (val) => val === 3 || val === 2,
-      then: () => Yup.string().required(lang === "AR" ? "مطلوب" : "Required"),
-      otherwise: () => Yup.string(),
+      then: () => Yup.string().required(lang === "AR" ? "Swift Code مطلوب" : "Swift Code is required"),
+      otherwise: () => Yup.string().nullable(),
     });
     return Yup.object(schema);
   }, [lang]);
@@ -293,6 +332,9 @@ export default function ProfileCompletionPopup() {
                       e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "");
                       formik.handleChange(e);
                     }}
+                    onBlur={() => formik.setFieldTouched("cateringEmail", true)}
+                    error={formik.touched.cateringEmail && Boolean(formik.errors.cateringEmail)}
+                    helperText={formik.touched.cateringEmail && formik.errors.cateringEmail}
                   />
                 </div>
               )}
@@ -323,6 +365,9 @@ export default function ProfileCompletionPopup() {
                       e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "");
                       formik.handleChange(e);
                     }}
+                    onBlur={() => formik.setFieldTouched("invoicingEmail", true)}
+                    error={formik.touched.invoicingEmail && Boolean(formik.errors.invoicingEmail)}
+                    helperText={formik.touched.invoicingEmail && formik.errors.invoicingEmail}
                   />
                 </div>
               )}
@@ -335,6 +380,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.flightId}
                     valueName={formik.values.flightName}
                     onChange={(id, name) => { formik.setFieldValue("flightId", id); formik.setFieldValue("flightName", name); }}
+                    onBlur={() => formik.setFieldTouched("flightName", true)}
+                    error={formik.touched.flightName && Boolean(formik.errors.flightName)}
+                    helperText={formik.touched.flightName && formik.errors.flightName}
                     getOptionLabel={(opt) => {
                       const name = opt?.flightNumberName;
                       return typeof name === "object" ? (name?.flightNumberName ?? "") : (name ?? "");
@@ -353,6 +401,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.registrationId}
                     valueName={formik.values.registrationName}
                     onChange={(id, name) => { formik.setFieldValue("registrationId", id); formik.setFieldValue("registrationName", name); }}
+                    onBlur={() => formik.setFieldTouched("registrationName", true)}
+                    error={formik.touched.registrationName && Boolean(formik.errors.registrationName)}
+                    helperText={formik.touched.registrationName && formik.errors.registrationName}
                     getOptionLabel={(opt) => opt.registrationName}
                     getOptionValue={(opt) => opt.registrationId}
                     uppercase={true}
@@ -368,6 +419,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.airCraftId}
                     valueName={formik.values.aircraftTypeName}
                     onChange={(id, name) => { formik.setFieldValue("airCraftId", id); formik.setFieldValue("aircraftTypeName", name); }}
+                    onBlur={() => formik.setFieldTouched("aircraftTypeName", true)}
+                    error={formik.touched.aircraftTypeName && Boolean(formik.errors.aircraftTypeName)}
+                    helperText={formik.touched.aircraftTypeName && formik.errors.aircraftTypeName}
                     getOptionLabel={(opt) => opt.airCraftName}
                     getOptionValue={(opt) => opt.airCraftId}
                     uppercase={true}
@@ -383,6 +437,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.billToId}
                     valueName={formik.values.billToName}
                     onChange={(id, name) => { formik.setFieldValue("billToId", id); formik.setFieldValue("billToName", name); }}
+                    onBlur={() => formik.setFieldTouched("billToName", true)}
+                    error={formik.touched.billToName && Boolean(formik.errors.billToName)}
+                    helperText={formik.touched.billToName && formik.errors.billToName}
                     getOptionLabel={(opt) => opt.billToName}
                     getOptionValue={(opt) => opt.billToId}
                   />
@@ -397,6 +454,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.operatorId}
                     valueName={formik.values.operatorName}
                     onChange={(id, name) => { formik.setFieldValue("operatorId", id); formik.setFieldValue("operatorName", name); }}
+                    onBlur={() => formik.setFieldTouched("operatorName", true)}
+                    error={formik.touched.operatorName && Boolean(formik.errors.operatorName)}
+                    helperText={formik.touched.operatorName && formik.errors.operatorName}
                     getOptionLabel={(opt) => opt.operatorName}
                     getOptionValue={(opt) => opt.operatorId}
                   />
@@ -411,6 +471,9 @@ export default function ProfileCompletionPopup() {
                     valueId={formik.values.agentId}
                     valueName={formik.values.agentName}
                     onChange={(id, name) => { formik.setFieldValue("agentId", id); formik.setFieldValue("agentName", name); }}
+                    onBlur={() => formik.setFieldTouched("agentName", true)}
+                    error={formik.touched.agentName && Boolean(formik.errors.agentName)}
+                    helperText={formik.touched.agentName && formik.errors.agentName}
                     getOptionLabel={(opt) => opt.agentName}
                     getOptionValue={(opt) => opt.agentId}
                   />
@@ -435,6 +498,9 @@ export default function ProfileCompletionPopup() {
                         formik.setFieldValue("groundHandlerPhone", matched.groundHandlerPhone || "");
                       }
                     }}
+                    onBlur={() => formik.setFieldTouched("groundHandlerName", true)}
+                    error={formik.touched.groundHandlerName && Boolean(formik.errors.groundHandlerName)}
+                    helperText={formik.touched.groundHandlerName && formik.errors.groundHandlerName}
                     getOptionLabel={(opt) => opt.groundHandlerName}
                     getOptionValue={(opt) => opt.groundHandlerId}
                     uppercase={true}
@@ -468,6 +534,9 @@ export default function ProfileCompletionPopup() {
                       e.target.value = e.target.value.replace(/[\u0600-\u06FF]/g, "").toUpperCase();
                       formik.handleChange(e);
                     }}
+                    onBlur={() => formik.setFieldTouched("groundHandlerEmail", true)}
+                    error={formik.touched.groundHandlerEmail && Boolean(formik.errors.groundHandlerEmail)}
+                    helperText={formik.touched.groundHandlerEmail && formik.errors.groundHandlerEmail}
                   />
                 </div>
               )}
@@ -498,6 +567,9 @@ export default function ProfileCompletionPopup() {
                       e.target.value = e.target.value.replace(/[^\d+]/g, "");
                       formik.handleChange(e);
                     }}
+                    onBlur={() => formik.setFieldTouched("groundHandlerPhone", true)}
+                    error={formik.touched.groundHandlerPhone && Boolean(formik.errors.groundHandlerPhone)}
+                    helperText={formik.touched.groundHandlerPhone && formik.errors.groundHandlerPhone}
                   />
                 </div>
               )}

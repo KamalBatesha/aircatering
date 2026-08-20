@@ -716,6 +716,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             // clearCart();
             actions?.setSubmitting(false);
             setPendingGuestData(null);
+            if (onClose) onClose();
          },
          onError: (error) => {
             const errorMsg = error?.response?.data?.message?.toLowerCase() || "";

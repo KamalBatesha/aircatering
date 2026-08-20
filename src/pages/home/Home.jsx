@@ -56,6 +56,19 @@ function Home() {
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const { selectedStation, setSelectedStation } = useStationStore();
   const ordersScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isScrollable, setIsScrollable] = useState(false);
+
+  const checkScroll = React.useCallback(() => {
+    const el = ordersScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const hasOverflow = scrollWidth > clientWidth + 5;
+    setIsScrollable(hasOverflow);
+    setCanScrollLeft(Math.abs(scrollLeft) > 5);
+    setCanScrollRight(Math.abs(scrollLeft) + clientWidth < scrollWidth - 5);
+  }, []);
 
   const queryClient = useQueryClient();
 
@@ -357,18 +370,46 @@ function Home() {
       }
     ] : []);
 
+  useEffect(() => {
+    const el = ordersScrollRef.current;
+    if (!el) return;
+
+    checkScroll();
+
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        checkScroll();
+      });
+      resizeObserver.observe(el);
+    }
+
+    const timer = setTimeout(checkScroll, 200);
+
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(timer);
+    };
+  }, [checkScroll, displayOrders, isLoading]);
+
   return (
     <div>
       <CreateOrderModal isOpen={isCreateOrderModalOpen} onClose={() => setIsCreateOrderModalOpen(false)} />
       <HomeHero lang={lang} onOrderClick={() => setIsCreateOrderModalOpen(true)} />
       {/* Orders Carousel */}
       {user && (displayOrders.length > 0 || guideEnabled || isLoading) && (
-        <div id="guide-orders-carousel" className="relative container mx-auto px-2">
+        <div id="guide-orders-carousel" className="relative container mx-auto px-4 sm:px-6">
           {/* Left Arrow */}
-          {!(isLoading && !guideEnabled) && (
+          {!(isLoading && !guideEnabled) && isScrollable && canScrollLeft && (
             <button
-              onClick={() => ordersScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer -translate-x-1"
+              onClick={() => ordersScrollRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 backdrop-blur-sm border border-[#E5E5E5] shadow-lg flex items-center justify-center text-[#C5A76D] hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              style={{ left: '12px' }}
               aria-label="Scroll left"
             >
               <FaChevronLeft size={14} />
@@ -394,10 +435,11 @@ function Home() {
           </div>
 
           {/* Right Arrow */}
-          {!(isLoading && !guideEnabled) && (
+          {!(isLoading && !guideEnabled) && isScrollable && canScrollRight && (
             <button
-              onClick={() => ordersScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer translate-x-1"
+              onClick={() => ordersScrollRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 backdrop-blur-sm border border-[#E5E5E5] shadow-lg flex items-center justify-center text-[#C5A76D] hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              style={{ right: '12px' }}
               aria-label="Scroll right"
             >
               <FaChevronRight size={14} />

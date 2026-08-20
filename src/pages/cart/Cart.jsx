@@ -60,6 +60,19 @@ export default function Cart() {
   const ordersScrollRef = useRef(null);
   const updateTimeoutRef = useRef(null);
   const pendingUpdateRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isScrollable, setIsScrollable] = useState(false);
+
+  const checkScroll = React.useCallback(() => {
+    const el = ordersScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const hasOverflow = scrollWidth > clientWidth + 5;
+    setIsScrollable(hasOverflow);
+    setCanScrollLeft(Math.abs(scrollLeft) > 5);
+    setCanScrollRight(Math.abs(scrollLeft) + clientWidth < scrollWidth - 5);
+  }, []);
 
   function InfoRow({ icon, label, value }) {
     if (!value && value !== 0) return null;
@@ -419,6 +432,33 @@ export default function Cart() {
     ] : []);
   const ordersList = displayOrders;
 
+  useEffect(() => {
+    const el = ordersScrollRef.current;
+    if (!el) return;
+
+    checkScroll();
+
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        checkScroll();
+      });
+      resizeObserver.observe(el);
+    }
+
+    const timer = setTimeout(checkScroll, 200);
+
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(timer);
+    };
+  }, [checkScroll, ordersList]);
+
   // Conditional field arrays for the order info grid
   const isArrival = !!selectedOrder?.orderHeaderIsArrival;
   const isDeparture = !!(selectedOrder?.orderHeaderIsDeparture || selectedOrder?.orderHeaderIsDepartur);
@@ -518,13 +558,16 @@ export default function Cart() {
 
             <div className="relative w-full">
               {/* Left Arrow */}
-              <button
-                onClick={() => ordersScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer -translate-x-3"
-                aria-label="Scroll left"
-              >
-                <FaChevronLeft size={14} />
-              </button>
+              {isScrollable && canScrollLeft && (
+                <button
+                  onClick={() => ordersScrollRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 backdrop-blur-sm border border-[#E5E5E5] shadow-lg flex items-center justify-center text-[#C5A76D] hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  style={{ left: '12px' }}
+                  aria-label="Scroll left"
+                >
+                  <FaChevronLeft size={14} />
+                </button>
+              )}
 
               {/* Scrollable Track */}
               <div
@@ -548,13 +591,16 @@ export default function Cart() {
               </div>
 
               {/* Right Arrow */}
-              <button
-                onClick={() => ordersScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#E5E5E5] shadow-md flex items-center justify-center text-[#C5A76D] hover:bg-white transition-all cursor-pointer translate-x-3"
-                aria-label="Scroll right"
-              >
-                <FaChevronRight size={14} />
-              </button>
+              {isScrollable && canScrollRight && (
+                <button
+                  onClick={() => ordersScrollRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/95 backdrop-blur-sm border border-[#E5E5E5] shadow-lg flex items-center justify-center text-[#C5A76D] hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  style={{ right: '12px' }}
+                  aria-label="Scroll right"
+                >
+                  <FaChevronRight size={14} />
+                </button>
+              )}
             </div>
           </div>
         )}
