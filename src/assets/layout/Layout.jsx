@@ -20,6 +20,7 @@ import UsersModule from "../../pages/Admin/Users/UsersModule";
 import DeliveredOrderPopup from "../../components/DeliveredOrderPopup";
 import OrderCreationReminderPopup from "../../components/OrderCreationReminderPopup";
 import ProfileCompletionPopup from "../../components/ProfileCompletionPopup";
+import PageTitleTracker from "../../components/PageTitleTracker";
 
 // ✅ Lazy-loaded components
 import GlobalTour from "../../components/guide/GlobalTour";
@@ -147,6 +148,7 @@ function Main() {
 
   return (
     <>
+      <PageTitleTracker />
       <main className={`min-h-screen flex flex-col ${lang === 'AR' && 'rtl'}`}>
         <Navbar />
         <div className="flex-1 relative h-full">
@@ -170,6 +172,7 @@ function MobileMain() {
 
   return (
     <>
+      <PageTitleTracker />
       <main className="min-h-screen flex flex-col">
         <Navbar />
         <div className="flex-1">

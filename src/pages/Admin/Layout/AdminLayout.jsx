@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import useAuthStore from '../../../assets/store/authStore';
+import PageTitleTracker from '../../../components/PageTitleTracker';
 
 export default function AdminLayout() {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -30,6 +31,7 @@ export default function AdminLayout() {
 
     return (
         <div className="min-h-screen flex bg-[#F7F7F5] text-[#1f1f1f]">
+            <PageTitleTracker />
             {/* Desktop Sidebar */}
             <div className="hidden lg:block w-72 shrink-0">
                 <Sidebar />

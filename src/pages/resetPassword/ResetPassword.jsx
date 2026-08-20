@@ -7,6 +7,7 @@ import useAuthMutation from "../../assets/apis/auth/AuthMutation";
 import { onlineOrderToast } from "../../assets/Helpers/onlineOrderToast";
 import { useLangStore } from "../../assets/store/langStore";
 import { langText } from "../../assets/constants/lang";
+import PageTitleTracker from "../../components/PageTitleTracker";
 
 export default function ResetPassword() {
   const [show, setShow] = useState({ pwd: false, confirm: false });
@@ -105,7 +106,7 @@ export default function ResetPassword() {
 
   return (
     <div className="flex items-center justify-center min-h-screen px-5">
-
+      <PageTitleTracker />
       <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-light-gray p-6">
         <h2 className="text-2xl font-semibold mb-2 text-gray-800">{langText.ResetPassword[lang]}</h2>
         <p className="text-sm text-gray-500 mb-4">{langText.ChooseAStrongPasswordForYourAccount[lang]}</p>

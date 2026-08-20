@@ -1,5 +1,11 @@
+import { useEffect } from "react";
 import "./ErrorPage.css";
+
 function ErrorPage() {
+  useEffect(() => {
+    document.title = "404 - Page Not Found | Air Catering";
+  }, []);
+
   return (
     <div className="main w-screen">
       <svg
