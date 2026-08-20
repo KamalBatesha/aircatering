@@ -28,6 +28,7 @@ function ProductDetailsModal({
   console.log("priceInfo", priceInfo);
 
   const [quantity, setQuantity] = useState(1);
+  const isGuestSubmitted = !user && !!localStorage.getItem("GUEST_SUBMITTED_ORDER");
 
   // ESC key to close
   useEffect(() => {
