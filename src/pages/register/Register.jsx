@@ -642,7 +642,15 @@ function Request() {
     companyLink: yup
       .string()
       .required(langText.companyLinkIsRequired[lang])
-      .url(langText.invalidUrl[lang]),
+      .test(
+        "is-valid-url",
+        lang === "AR" ? "رابط غير صالح (مثل: example.com أو https://example.com)" : "Invalid URL format (e.g., example.com or https://example.com)",
+        (val) => {
+          if (!val) return false;
+          const trimmed = val.trim();
+          return /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(trimmed);
+        }
+      ),
 
   });
   const navigate = useNavigate()
@@ -673,8 +681,13 @@ function Request() {
       console.log("values", values);
       // return;
 
+      let normalizedWebsite = (values.companyLink || "").trim();
+      if (normalizedWebsite && !/^https?:\/\//i.test(normalizedWebsite)) {
+        normalizedWebsite = "https://" + normalizedWebsite;
+      }
+
       AskToRegister.mutate(
-        { ...values, companyWebSite: values.companyLink, contryID: Number(values.contryID) },
+        { ...values, companyWebSite: normalizedWebsite, contryID: Number(values.contryID) },
         {
           onMutate: () => {
             toast.loading(langText.loading[lang] + "...", { id: 1 });

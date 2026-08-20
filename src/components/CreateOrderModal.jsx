@@ -332,6 +332,26 @@ import { fieldDescriptions } from '../assets/constants/fieldDescriptions';
 import useAuthStore from '../assets/store/authStore';
 import { GetCountriesCodes } from '../assets/apis/country/Country';
 
+const createDateWithTime = (existingVal, newDate) => {
+   if (!newDate || !newDate.isValid()) return null;
+   const now = dayjs();
+   const isExistingValid = existingVal && dayjs.isDayjs(existingVal) && existingVal.isValid();
+   let hour = isExistingValid ? existingVal.hour() : now.hour();
+   let minute = isExistingValid ? existingVal.minute() : now.minute();
+   
+   let updated = newDate.hour(hour).minute(minute).second(0).millisecond(0);
+   if (updated.isBefore(now)) {
+      updated = updated.hour(now.hour() + 4).minute(now.minute());
+   }
+   return updated;
+};
+
+const createTimeWithDate = (existingVal, newTime) => {
+   if (!newTime || !newTime.isValid()) return existingVal;
+   const base = existingVal && dayjs.isDayjs(existingVal) && existingVal.isValid() ? existingVal : dayjs().add(4, 'hour');
+   return base.hour(newTime.hour()).minute(newTime.minute()).second(0).millisecond(0);
+};
+
 export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null }) {
    const navigate = useNavigate();
    const [step, setStep] = useState(0);
@@ -354,7 +374,17 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       contryID: Yup.number().required(langText.countryIsRequired[lang]),
       companyName: Yup.string().required(langText.companyNameIsRequired[lang]),
       companyPersonalName: Yup.string().required(langText.companyPersonalNameIsRequired[lang]),
-      companyLink: Yup.string().required(langText.companyLinkIsRequired[lang]).url(langText.invalidUrl[lang]),
+      companyLink: Yup.string()
+         .required(langText.companyLinkIsRequired[lang])
+         .test(
+            "is-valid-url",
+            lang === "AR" ? "رابط غير صالح (مثل: example.com أو https://example.com)" : "Invalid URL format (e.g., example.com or https://example.com)",
+            (val) => {
+               if (!val) return false;
+               const trimmed = val.trim();
+               return /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(trimmed);
+            }
+         ),
    });
 
    const Step1Schema = Yup.object().shape({
@@ -362,15 +392,15 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
       priceList: Yup.number().required(langText.priceListIsRequired[lang]),
       flightNumberName: Yup.string()
 			.required(langText.flightNumberIsRequired[lang])
-			.matches(/^[A-Z0-9]{2,3}\s?[0-9]{1,4}[A-Z]?$/i, lang === "AR" ? "رقم الرحلة غير صالح (مثل: BA123)" : "Invalid Flight Number format (e.g., BA123)"),
+			.matches(/^[A-Za-z0-9/\s-]{1,30}$/, lang === "AR" ? "رقم الرحلة غير صالح" : "Invalid Flight Number format"),
 		registrationName: profileSettings?.customerDataNotAplicable
 			? Yup.string()
 			: Yup.string()
 				.required(langText.registrationIsRequired[lang])
-				.matches(/^([A-Z0-9]{1,3}-?[A-Z0-9]{1,5}|N[1-9]\d{0,4}[A-Z]{0,2})$/i, lang === "AR" ? "رقم التسجيل غير صالح (مثل: N12345, G-BOAC)" : "Invalid Registration format (e.g., N12345, G-BOAC)"),
+				.matches(/^[A-Za-z0-9/\s-]{1,30}$/, lang === "AR" ? "رقم التسجيل غير صالح" : "Invalid Registration format"),
 		aircraftTypeName: Yup.string()
 			.required(langText.aircraftTypeIsRequired[lang])
-			.matches(/^[A-Z0-9]{2,4}$/i, lang === "AR" ? "نوع الطائرة غير صالح (مثل: B738, A320)" : "Invalid Aircraft Type format (e.g., B738, A320)"),
+			.matches(/^[A-Za-z0-9/\s-]{1,30}$/, lang === "AR" ? "نوع الطائرة غير صالح" : "Invalid Aircraft Type format"),
       orderHeaderArrivalPaxnum: Yup.number().when("orderHeaderFlightType", {
          is: (val) => val === "Arrival" || val === "Both",
          then: (schema) => schema.min(0, lang === "AR" ? "يجب أن يكون 0 أو أكثر" : "Must be at least 0").required(lang === "AR" ? "عدد ركاب الوصول مطلوب" : "Number of Arrival Passengers is required"),
@@ -397,64 +427,58 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    // Step 2: Date & Time + Delivery Dates (merged)
    const Step2Schema = Yup.object().shape({
       arrivalDate: Yup.mixed()
-         .required(langText.arrivalDateIsRequired[lang])
-         .test(
-            'arrival-required',
-            lang === "AR" ? "تاريخ الوصول مطلوب" : "Arrival date is required",
-            function (val) {
-               const { orderHeaderFlightType } = this.parent;
-               // if (orderHeaderFlightType === "Arrival" || orderHeaderFlightType === "Both") {
-               //    return !!val;
-               // }
-               return true;
-            }
-         )
-         .test(
-            'arrival-future',
-            lang === "AR" ? "يجب أن يكون تاريخ الوصول في المستقبل" : "Arrival date must be in the future",
-            function (val) {
-               const { orderHeaderFlightType } = this.parent;
-               if (orderHeaderFlightType === "Departure") return true;
-               if (!val || !val.isValid()) return true;
-               return val.isAfter(dayjs());
-            }
-         ),
+         .nullable()
+         .when("orderHeaderFlightType", {
+            is: (val) => val === "Arrival" || val === "Both",
+            then: (schema) =>
+               schema
+                  .required(langText.arrivalDateIsRequired[lang])
+                  .test(
+                     'arrival-valid',
+                     langText.arrivalDateIsRequired[lang],
+                     (val) => Boolean(val && (dayjs.isDayjs(val) ? val.isValid() : true))
+                  )
+                  .test(
+                     'arrival-future',
+                     lang === "AR" ? "يجب أن يكون تاريخ الوصول في المستقبل" : "Arrival date must be in the future",
+                     (val) => {
+                        if (!val || !dayjs.isDayjs(val) || !val.isValid()) return true;
+                        return val.isAfter(dayjs());
+                     }
+                  ),
+            otherwise: (schema) => schema.nullable(),
+         }),
       departureDate: Yup.mixed()
-         .required(langText.departureDateIsRequired[lang])
-         .test(
-            'departure-required',
-            lang === "AR" ? "تاريخ المغادرة مطلوب" : "Departure date is required",
-            function (val) {
-               const { orderHeaderFlightType } = this.parent;
-               // if (orderHeaderFlightType === "Departure" || orderHeaderFlightType === "Both") {
-               //    return !!val;
-               // }
-               return true;
-            }
-         )
-         .test(
-            'departure-future',
-            lang === "AR" ? "يجب أن يكون تاريخ المغادرة في المستقبل" : "Departure date must be in the future",
-            function (val) {
-               if (!val || !val.isValid()) return true;
-               return val.isAfter(dayjs());
-            }
-         )
-         .test(
-            'at-least-one-date',
-            langText.atLeastOneDateRequired?.[lang] || 'Either Arrival or Departure date is required',
-            function (val) {
-               const { orderHeaderFlightType, arrivalDate } = this.parent;
-               if (orderHeaderFlightType === "Both") {
-                  return !!(val && arrivalDate);
-               }
-               return true;
-            }
-         )
-         .test('is-after-arrival', langText.departureMustBeAfterArrival?.[lang] || "Departure must be after arrival", function (val) {
-            const { orderHeaderFlightType, arrivalDate } = this.parent;
-            if (!val || !val.isValid() || !arrivalDate || !arrivalDate.isValid()) return true;
-            return val.isAfter(arrivalDate);
+         .nullable()
+         .when("orderHeaderFlightType", {
+            is: (val) => val === "Departure" || val === "Both",
+            then: (schema) =>
+               schema
+                  .required(langText.departureDateIsRequired[lang])
+                  .test(
+                     'departure-valid',
+                     langText.departureDateIsRequired[lang],
+                     (val) => Boolean(val && (dayjs.isDayjs(val) ? val.isValid() : true))
+                  )
+                  .test(
+                     'departure-future',
+                     lang === "AR" ? "يجب أن يكون تاريخ المغادرة في المستقبل" : "Departure date must be in the future",
+                     (val) => {
+                        if (!val || !dayjs.isDayjs(val) || !val.isValid()) return true;
+                        return val.isAfter(dayjs());
+                     }
+                  )
+                  .test(
+                     'is-after-arrival',
+                     langText.departureMustBeAfterArrival?.[lang] || "Departure must be after arrival",
+                     function (val) {
+                        const { orderHeaderFlightType, arrivalDate } = this.parent;
+                        if (orderHeaderFlightType !== "Both") return true;
+                        if (!val || !val.isValid() || !arrivalDate || !arrivalDate.isValid()) return true;
+                        return val.isAfter(arrivalDate);
+                     }
+                  ),
+            otherwise: (schema) => schema.nullable(),
          }),
       arrivalDeliveryDate: Yup.mixed()
          .nullable()
@@ -773,6 +797,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
          };
 
          if (!user) {
+            let normalizedWebsite = (values.companyLink || "").trim();
+            if (normalizedWebsite && !/^https?:\/\//i.test(normalizedWebsite)) {
+               normalizedWebsite = "https://" + normalizedWebsite;
+            }
             const guestPayload = {
                mobil: values.mobil,
                password: "Sky@1234",
@@ -782,7 +810,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                companyPersonalName: values.companyPersonalName,
                subscribe: true,
                companyAddetionalInfo: "",
-               companyWebSite: values.companyLink,
+               companyWebSite: normalizedWebsite,
                quatationVM: orderHeaderPayload,
                _detailsQT: cart?.map((item) => ({
                   orderDetailsId: 0,
@@ -1546,12 +1574,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                  </div>
                               )}
 
-                              {/* STEP 4: Main Dates & Delivery Dates */}
-                              {stepsConfig[step]?.id === 'dateTime' && (
-                                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                       {/* Arrival Date */}
+                               {/* STEP 4: Main Dates & Delivery Dates */}
+                               {stepsConfig[step]?.id === 'dateTime' && (
+                                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                        <div className="col-span-1">
                                           <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                                              {lang === "EN" ? "Arrival Date (UTC)" : "تاريخ الوصول (UTC)"} <HelpTooltip text={fieldDescriptions.arrivalDate[lang]} />
@@ -1561,15 +1587,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 format="DD/MM/YYYY"
                                                 value={values.arrivalDate}
                                                 onChange={(newDate) => {
-                                                   if (!newDate?.isValid()) return;
-                                                   const updated = values.arrivalDate
-                                                      ? values.arrivalDate
-                                                         .set("year", newDate.year())
-                                                         .set("month", newDate.month())
-                                                         .set("date", newDate.date())
-                                                      : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
+                                                   const updated = createDateWithTime(values.arrivalDate, newDate);
                                                    setFieldValue("arrivalDate", updated);
-                                                   }}
+                                                }}
                                                 onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1601,16 +1621,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 format="HH:mm"
                                                 value={values.arrivalDate}
                                                 onChange={(newTime) => {
-                                                   if (!newTime?.isValid()) return;
-                                                   const updated = values.arrivalDate
-                                                      ? values.arrivalDate
-                                                         .set("hour", newTime.hour())
-                                                         .set("minute", newTime.minute())
-                                                      : dayjs()
-                                                         .set("hour", newTime.hour())
-                                                         .set("minute", newTime.minute());
+                                                   const updated = createTimeWithDate(values.arrivalDate, newTime);
                                                    setFieldValue("arrivalDate", updated);
-                                                   }}
+                                                }}
                                                 onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1642,13 +1655,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    format="DD/MM/YYYY"
                                                    value={values.arrivalDeliveryDate}
                                                    onChange={(newDate) => {
-                                                      if (!newDate?.isValid()) return;
-                                                      const updated = values.arrivalDeliveryDate
-                                                         ? values.arrivalDeliveryDate
-                                                            .set("year", newDate.year())
-                                                            .set("month", newDate.month())
-                                                            .set("date", newDate.date())
-                                                         : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
+                                                      const updated = createDateWithTime(values.arrivalDeliveryDate, newDate);
                                                       setFieldValue("arrivalDeliveryDate", updated);
                                                    }}
                                                    onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
@@ -1687,14 +1694,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    format="HH:mm"
                                                    value={values.arrivalDeliveryDate}
                                                    onChange={(newTime) => {
-                                                      if (!newTime?.isValid()) return;
-                                                      const updated = values.arrivalDeliveryDate
-                                                         ? values.arrivalDeliveryDate
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute())
-                                                         : dayjs()
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute());
+                                                      const updated = createTimeWithDate(values.arrivalDeliveryDate, newTime);
                                                       setFieldValue("arrivalDeliveryDate", updated);
                                                    }}
                                                    onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
@@ -1728,13 +1728,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    format="DD/MM/YYYY"
                                                    value={values.departureDeliveryDate}
                                                    onChange={(newDate) => {
-                                                      if (!newDate?.isValid()) return;
-                                                      const updated = values.departureDeliveryDate
-                                                         ? values.departureDeliveryDate
-                                                            .set("year", newDate.year())
-                                                            .set("month", newDate.month())
-                                                            .set("date", newDate.date())
-                                                         : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
+                                                      const updated = createDateWithTime(values.departureDeliveryDate, newDate);
                                                       setFieldValue("departureDeliveryDate", updated);
                                                    }}
                                                    onClose={() => setFieldTouched("departureDeliveryDate", true)}
@@ -1772,14 +1766,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    format="HH:mm"
                                                    value={values.departureDeliveryDate}
                                                    onChange={(newTime) => {
-                                                      if (!newTime?.isValid()) return;
-                                                      const updated = values.departureDeliveryDate
-                                                         ? values.departureDeliveryDate
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute())
-                                                         : dayjs()
-                                                            .set("hour", newTime.hour())
-                                                            .set("minute", newTime.minute());
+                                                      const updated = createTimeWithDate(values.departureDeliveryDate, newTime);
                                                       setFieldValue("departureDeliveryDate", updated);
                                                    }}
                                                    onClose={() => setFieldTouched("departureDeliveryDate", true)}
@@ -1812,15 +1799,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 disablePast={false}
                                                 value={values.departureDate}
                                                 onChange={(newDate) => {
-                                                   if (!newDate?.isValid()) return;
-                                                   const updated = values.departureDate
-                                                      ? values.departureDate
-                                                         .set("year", newDate.year())
-                                                         .set("month", newDate.month())
-                                                         .set("date", newDate.date())
-                                                      : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
+                                                   const updated = createDateWithTime(values.departureDate, newDate);
                                                    setFieldValue("departureDate", updated);
-                                                   }}
+                                                }}
                                                 onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1853,16 +1834,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 format="HH:mm"
                                                 value={values.departureDate}
                                                 onChange={(newTime) => {
-                                                   if (!newTime?.isValid()) return;
-                                                   const updated = values.departureDate
-                                                      ? values.departureDate
-                                                         .set("hour", newTime.hour())
-                                                         .set("minute", newTime.minute())
-                                                      : dayjs()
-                                                         .set("hour", newTime.hour())
-                                                         .set("minute", newTime.minute());
+                                                   const updated = createTimeWithDate(values.departureDate, newTime);
                                                    setFieldValue("departureDate", updated);
-                                                   }}
+                                                }}
                                                 onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1870,15 +1844,17 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                       fullWidth: true,
                                                       error: touched.departureDate && Boolean(errors.departureDate),
                                                       sx: {
+
                                                          backgroundColor: "white",
                                                          "& .MuiOutlinedInput-root": { borderRadius: "50px", height: "30px", fontSize: "12px", "& fieldset": { borderRadius: "50px" } },
                                                          "& .MuiPickersOutlinedInput-root": { height: "30px" },
+
                                                       },
                                                    },
                                                 }}
                                              />
                                           </div>
-                                       </div>
+                                        </div>
 
 
 
