@@ -209,7 +209,7 @@ const CustomLookup = ({
               flexDirection: "column",
             }}
           >
-            <MenuList dense sx={{ overflowY: "auto", flex: 1, p: 0 }}>
+            <MenuList dense sx={{ overflowY: "auto", flex: 1, p: 0 }} onMouseDown={(e) => e.preventDefault()}>
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
                   <MenuItem

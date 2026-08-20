@@ -125,6 +125,7 @@ function Menu({ scrollToItemId, orderDetails }) {
   const [data, setData] = useState([]);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const isGuestSubmitted = !user && !!localStorage.getItem("GUEST_SUBMITTED_ORDER");
   const [search, setSearch] = useState("");
   const { setProduct } = useProductStore();
   const { setAvailableStations, selectedStation } = useStationStore();
@@ -513,6 +514,10 @@ function Menu({ scrollToItemId, orderDetails }) {
   const pendingUpdateRef = useRef(null);
 
   function handleAddItems(item, qty) {
+    if (isGuestSubmitted) {
+      onlineOrderToast.error(lang === "AR" ? "لا يمكن تعديل الطلب بعد إرساله" : "Cannot modify order after sending");
+      return;
+    }
     const { isArrival, isDeparture } = useProductStore.getState();
     const { selectedOrder } = useCartStore.getState();
     const addedQty = +qty || 1;

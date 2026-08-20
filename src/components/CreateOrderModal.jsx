@@ -47,7 +47,8 @@ const serializeGuestDraft = (values, step, maxReachedStep) => {
 
 const restoreGuestDraft = (stepsLength) => {
    try {
-      const raw = sessionStorage.getItem(GUEST_DRAFT_KEY);
+      const submitted = localStorage.getItem("GUEST_SUBMITTED_ORDER");
+      const raw = submitted || sessionStorage.getItem(GUEST_DRAFT_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed?.values) return null;
@@ -335,6 +336,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    const navigate = useNavigate();
    const [step, setStep] = useState(0);
    const [maxReachedStep, setMaxReachedStep] = useState(0);
+   const [isGuestSubmitted, setIsGuestSubmitted] = useState(false);
    const { user } = useAuthStore();
    const { cart, clearCart } = useCartStore((state) => state);
 
@@ -358,11 +360,17 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
    const Step1Schema = Yup.object().shape({
       station: Yup.number().required(langText.stationIsRequired[lang]),
       priceList: Yup.number().required(langText.priceListIsRequired[lang]),
-      flightNumberName: Yup.string().required(langText.flightNumberIsRequired[lang]),
-      registrationName: profileSettings?.customerDataNotAplicable
-         ? Yup.string()
-         : Yup.string().required(langText.registrationIsRequired[lang]),
-      aircraftTypeName: Yup.string().required(langText.aircraftTypeIsRequired[lang]),
+      flightNumberName: Yup.string()
+			.required(langText.flightNumberIsRequired[lang])
+			.matches(/^[A-Z0-9]{2,3}\s?[0-9]{1,4}[A-Z]?$/i, lang === "AR" ? "رقم الرحلة غير صالح (مثل: BA123)" : "Invalid Flight Number format (e.g., BA123)"),
+		registrationName: profileSettings?.customerDataNotAplicable
+			? Yup.string()
+			: Yup.string()
+				.required(langText.registrationIsRequired[lang])
+				.matches(/^([A-Z0-9]{1,3}-?[A-Z0-9]{1,5}|N[1-9]\d{0,4}[A-Z]{0,2})$/i, lang === "AR" ? "رقم التسجيل غير صالح (مثل: N12345, G-BOAC)" : "Invalid Registration format (e.g., N12345, G-BOAC)"),
+		aircraftTypeName: Yup.string()
+			.required(langText.aircraftTypeIsRequired[lang])
+			.matches(/^[A-Z0-9]{2,4}$/i, lang === "AR" ? "نوع الطائرة غير صالح (مثل: B738, A320)" : "Invalid Aircraft Type format (e.g., B738, A320)"),
       orderHeaderArrivalPaxnum: Yup.number().when("orderHeaderFlightType", {
          is: (val) => val === "Arrival" || val === "Both",
          then: (schema) => schema.min(0, lang === "AR" ? "يجب أن يكون 0 أو أكثر" : "Must be at least 0").required(lang === "AR" ? "عدد ركاب الوصول مطلوب" : "Number of Arrival Passengers is required"),
@@ -600,21 +608,50 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
          originalProfileSettings.current = null;
       } else {
          if (!user) {
-            // Guest mode: restore step from draft if available
+            // Always allow editing when the modal is reopened
+            setIsGuestSubmitted(false);
+            
             const draft = restoreGuestDraft(stepsConfig.length);
             if (draft) {
-               setStep(draft.step);
-               setMaxReachedStep(draft.maxReachedStep);
+               const computedType = cart?.length > 0
+                  ? (cart.every((item) => item.orderDetailsIsArrival) && !cart.every((item) => item.orderDetailsIsDepartur) ? "Arrival"
+                    : cart.every((item) => item.orderDetailsIsDepartur) && !cart.every((item) => item.orderDetailsIsArrival) ? "Departure"
+                    : "Both")
+                  : "Both";
+                  
+               const testValues = {
+                   ...draft.values,
+                   orderHeaderFlightType: computedType,
+                   orderHeaderIsDepartur: computedType === "Departure" || computedType === "Both",
+                   orderHeaderIsArrival: computedType === "Arrival" || computedType === "Both",
+               };
+
+               let targetStep = draft.step;
+               let targetMax = draft.maxReachedStep;
+
+               for (let i = 0; i <= draft.maxReachedStep; i++) {
+                   try {
+                       validationSchemas[i].validateSync(testValues);
+                   } catch (err) {
+                       targetStep = i;
+                       targetMax = i;
+                       break;
+                   }
+               }
+               
+               setStep(targetStep);
+               setMaxReachedStep(targetMax);
             } else {
                setStep(0);
                setMaxReachedStep(0);
             }
          } else {
+            setIsGuestSubmitted(false);
             setStep(0);
             setMaxReachedStep(0);
          }
       }
-   }, [isOpen, user]);
+   }, [isOpen, user, cart]);
 
    useEffect(() => {
       if (isOpen) {
@@ -767,19 +804,27 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
             guestMutation.mutate(guestPayload, {
                onSuccess: () => {
                   onlineOrderToast.success(lang == "EN" ? "Request sent successfully" : "تم إرسال الطلب بنجاح", { id: "creatingOrder" });
+                  localStorage.setItem("GUEST_SUBMITTED_ORDER", serializeGuestDraft(values, step, maxReachedStep));
                   sessionStorage.removeItem(GUEST_DRAFT_KEY);
-                  onClose();
-                  actions.resetForm();
-                  setStep(0);
-                  clearCart();
+                  setIsGuestSubmitted(true);
+                  // clearCart();
                   actions.setSubmitting(false);
                },
                onError: (error) => {
-                  console.log("error", error?.response?.data?.message?.toLowerCase());
-                  if (error?.response?.data?.message?.toLowerCase() == "email already registered") { onlineOrderToast.error(lang == "EN" ? "email is already registered" : "البريد الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
-                  else if (error?.response?.data?.message?.toLowerCase() == "mobile number already registered.") { onlineOrderToast.error(lang == "EN" ? "mobile number is already registered" : "رقم الهاتف مسجل بالفعل", { id: "creatingOrder" }); }
-                  else if (error?.response?.data?.message?.toLowerCase() == "company website already registered.") { onlineOrderToast.error(lang == "EN" ? "company website is already registered" : "الموقع الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
-                  else { onlineOrderToast.error(lang == "EN" ? "Failed to send request" : "فشل إرسال الطلب", { id: "creatingOrder" }); }
+                  const errorMsg = error?.response?.data?.message?.toLowerCase() || "";
+                  console.log("error", errorMsg);
+                  if (errorMsg === "email already registered") { onlineOrderToast.error(lang == "EN" ? "email is already registered" : "البريد الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+                  else if (errorMsg === "mobile number already registered.") { onlineOrderToast.error(lang == "EN" ? "mobile number is already registered" : "رقم الهاتف مسجل بالفعل", { id: "creatingOrder" }); }
+                  else if (errorMsg === "company website already registered.") { onlineOrderToast.error(lang == "EN" ? "company website is already registered" : "الموقع الإلكتروني مسجل بالفعل", { id: "creatingOrder" }); }
+                  else if (errorMsg.includes("you have already registered and placed an order with us")) { 
+                      onlineOrderToast.error(
+                          lang == "EN" 
+                              ? "You have already registered and placed an order with us. Please log in to your account to access your order details." 
+                              : "لقد قمت بالتسجيل مسبقاً وطلب أوردر معنا. يرجى تسجيل الدخول إلى حسابك للوصول إلى تفاصيل طلبك.", 
+                          { id: "creatingOrder", duration: 30000 }
+                      ); 
+                  }
+                  else { onlineOrderToast.error(lang == "EN" ? (error?.response?.data?.message || "Failed to send request") : "فشل إرسال الطلب", { id: "creatingOrder" }); }
                   actions.setSubmitting(false);
                }
             });
@@ -812,6 +857,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
 
    // Restore guest draft from sessionStorage (guest mode only)
    const restoredGuestDraft = !user ? restoreGuestDraft(stepsConfig.length) : null;
+
+   const computedFlightType = cart?.length > 0
+      ? (cart.every((item) => item.orderDetailsIsArrival) && !cart.every((item) => item.orderDetailsIsDepartur) ? "Arrival"
+        : cart.every((item) => item.orderDetailsIsDepartur) && !cart.every((item) => item.orderDetailsIsArrival) ? "Departure"
+        : "Both")
+      : "Both";
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -872,20 +923,23 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                      orderHeaderCrewNum: "",
                      orderHeaderArrivalPaxnum: "",
                      orderHeaderArrivalCrewNum: "",
-                     orderHeaderFlightType: user ? "Both" : cart?.every((item) => item.orderDetailsIsArrival) ? "Arrival" : cart?.every((item) => item.orderDetailsIsDepartur) ? "Departure" : "Both",
+                     orderHeaderFlightType: computedFlightType,
                      paymentInfoAccountBankName: profileSettings?.paymentInfoAccountBankName || "",
                      paymentInfoAccountNumber: profileSettings?.paymentInfoAccountNumber || "",
                      paymentInfoIBan: profileSettings?.paymentInfoIBan || "",
                      paymentInfoSwiftCode: profileSettings?.paymentInfoSwiftCode || "",
-                     orderHeaderIsDepartur: false,
-                     orderHeaderIsArrival: false,
+                     orderHeaderIsDepartur: computedFlightType === "Departure" || computedFlightType === "Both",
+                     orderHeaderIsArrival: computedFlightType === "Arrival" || computedFlightType === "Both",
 
                      orderHeadearGroundHandlerId: profileSettings?.groundHandlerId ?? 0,
                      orderHeadearGroundHandlerName: profileSettings?.groundHandlerName ?? "",
                      orderHeadearGroundHandlerEmail: profileSettings?.groundHandlerEmail ?? "",
                      orderHeadearGroundHandlerPhone: profileSettings?.groundHandlerPhone ?? "",
                      // Restore guest draft values (takes priority over defaults)
-                     ...(restoredGuestDraft?.values ?? {})
+                     ...(restoredGuestDraft?.values ?? {}),
+                     orderHeaderFlightType: computedFlightType,
+                     orderHeaderIsDepartur: computedFlightType === "Departure" || computedFlightType === "Both",
+                     orderHeaderIsArrival: computedFlightType === "Arrival" || computedFlightType === "Both",
                   }}
                   validationSchema={currentValidationSchema}
                   onSubmit={handleSubmit}
@@ -944,6 +998,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                               <FormObserver currencyList={currencyList} setFieldValue={setFieldValue} />
                               <GuestDraftSaver values={values} step={step} maxReachedStep={maxReachedStep} user={user} />
 
+                              <div className={isGuestSubmitted ? "pointer-events-none opacity-80" : ""}>
                               {stepsConfig[step]?.id === 'guestInfo' && (
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="col-span-1">
@@ -953,7 +1008,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyPersonalName"
                                           value={values.companyPersonalName}
-                                          onChange={(e) => setFieldValue("companyPersonalName", e.target.value)}
+                                          onChange={(e) => { setFieldValue("companyPersonalName", e.target.value); setFieldTouched("companyPersonalName", true, true); }}
                                           onBlur={() => setFieldTouched("companyPersonalName", true)}
                                           error={touched.companyPersonalName && Boolean(errors.companyPersonalName)}
                                           helperText={touched.companyPersonalName && errors.companyPersonalName}
@@ -969,7 +1024,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyName"
                                           value={values.companyName}
-                                          onChange={(e) => setFieldValue("companyName", e.target.value)}
+                                          onChange={(e) => { setFieldValue("companyName", e.target.value); setFieldTouched("companyName", true, true); }}
                                           onBlur={() => setFieldTouched("companyName", true)}
                                           error={touched.companyName && Boolean(errors.companyName)}
                                           helperText={touched.companyName && errors.companyName}
@@ -986,7 +1041,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           name="email"
                                           type="email"
                                           value={values.email}
-                                          onChange={(e) => setFieldValue("email", e.target.value)}
+                                          onChange={(e) => { setFieldValue("email", e.target.value); setFieldTouched("email", true, true); }}
                                           onBlur={() => setFieldTouched("email", true)}
                                           error={touched.email && Boolean(errors.email)}
                                           helperText={touched.email && errors.email}
@@ -1002,7 +1057,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyLink"
                                           value={values.companyLink}
-                                          onChange={(e) => setFieldValue("companyLink", e.target.value)}
+                                          onChange={(e) => { setFieldValue("companyLink", e.target.value); setFieldTouched("companyLink", true, true); }}
                                           onBlur={() => setFieldTouched("companyLink", true)}
                                           error={touched.companyLink && Boolean(errors.companyLink)}
                                           helperText={touched.companyLink && errors.companyLink}
@@ -1019,7 +1074,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           select
                                           name="contryID"
                                           value={values.contryID}
-                                          onChange={(e) => setFieldValue("contryID", e.target.value)}
+                                          onChange={(e) => { setFieldValue("contryID", e.target.value); setFieldTouched("contryID", true, true); }}
                                           onBlur={() => setFieldTouched("contryID", true)}
                                           error={touched.contryID && Boolean(errors.contryID)}
                                           helperText={touched.contryID && errors.contryID}
@@ -1041,7 +1096,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="mobil"
                                           value={values.mobil}
-                                          onChange={(e) => setFieldValue("mobil", e.target.value)}
+                                          onChange={(e) => { setFieldValue("mobil", e.target.value); setFieldTouched("mobil", true, true); }}
                                           onBlur={() => setFieldTouched("mobil", true)}
                                           error={touched.mobil && Boolean(errors.mobil)}
                                           helperText={touched.mobil && errors.mobil}
@@ -1075,14 +1130,14 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    found.stationDefualtPriceHeaderId,
                                                 );
                                              }
-                                             setFieldTouched("station", true, false);
+                                             setFieldTouched("station", true);
                                           }}
                                           getOptionLabel={(opt) => opt.stationName}
                                           getOptionValue={(opt) => opt.stationId}
-                                          error={touched.station && Boolean(errors.station)}
-                                          onBlur={() => setFieldTouched("station", true, false)}
+														 error={touched.station && Boolean(errors.station) && !values.station}
+                                          onBlur={() => setFieldTouched("station", true)}
                                        />
-                                       {touched.station && errors.station && (
+													 {touched.station && errors.station && !values?.station && (
                                           <div className="text-red-500 text-xs mt-1">
                                              {errors.station}
                                           </div>
@@ -1112,9 +1167,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    setFieldValue("orderHeaderIsDepartur", true)
                                                    setFieldValue("orderHeaderIsArrival", true)
                                                 }
-                                                setFieldTouched("orderHeaderFlightType", true, false);
+                                                setFieldTouched("orderHeaderFlightType", true);
                                              }}
-                                             onBlur={() => setFieldTouched("orderHeaderFlightType", true, false)}
+                                             onBlur={() => setFieldTouched("orderHeaderFlightType", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] border-gray-300 font-medium ${!user ? "opacity-80 cursor-not-allowed" : ""}`}
                                           >
                                              <option value="Arrival">{lang === "AR" ? "وصول" : "Arrival"}</option>
@@ -1139,7 +1194,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("flightNumber", id);
                                              setFieldValue("flightNumberName", name);
-                                             setFieldTouched("flightNumberName", true, false);
+                                             setFieldTouched("flightNumberName", true);
                                           }}
                                           getOptionLabel={(opt) => {
                                              const name = opt?.flightNumberName;
@@ -1150,7 +1205,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           error={
                                              touched.flightNumberName && Boolean(errors.flightNumberName)
                                           }
-                                          onBlur={() => setFieldTouched("flightNumberName", true, false)}
+                                          onBlur={() => setFieldTouched("flightNumberName", true)}
                                        />
                                        {touched.flightNumberName && errors.flightNumberName && (
                                           <div className="text-red-500 text-xs mt-1">
@@ -1170,7 +1225,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("registration", id);
                                                 setFieldValue("registrationName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("registrationName", true, false);
+                                                setFieldTouched("registrationName", true);
                                              }}
                                              getOptionLabel={(opt) => opt.registrationName}
                                              getOptionValue={(opt) => opt.registrationId}
@@ -1178,7 +1233,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              error={
                                                 touched.registrationName && Boolean(errors.registrationName)
                                              }
-                                             onBlur={() => setFieldTouched("registrationName", true, false)}
+                                             onBlur={() => setFieldTouched("registrationName", true)}
                                           />
                                           {touched.registrationName && errors.registrationName && (
                                              <div className="text-red-500 text-xs mt-1">
@@ -1194,8 +1249,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderArrivalPaxnum}
-                                                onChange={(e) => { setFieldValue("orderHeaderArrivalPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalPaxnum", true, false); }}
-                                                onBlur={() => setFieldTouched("orderHeaderArrivalPaxnum", true, false)}
+                                                onChange={(e) => { setFieldValue("orderHeaderArrivalPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalPaxnum", true); }}
+                                                onBlur={() => setFieldTouched("orderHeaderArrivalPaxnum", true)}
                                                 size="small"
                                                 fullWidth
                                                 error={touched.orderHeaderArrivalPaxnum && Boolean(errors.orderHeaderArrivalPaxnum)}
@@ -1217,8 +1272,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderPaxnum}
-                                                onChange={(e) => { setFieldValue("orderHeaderPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderPaxnum", true, false); }}
-                                                onBlur={() => setFieldTouched("orderHeaderPaxnum", true, false)}
+                                                onChange={(e) => { setFieldValue("orderHeaderPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderPaxnum", true); }}
+                                                onBlur={() => setFieldTouched("orderHeaderPaxnum", true)}
                                                 size="small"
                                                 fullWidth
                                                 error={touched.orderHeaderPaxnum && Boolean(errors.orderHeaderPaxnum)}
@@ -1239,8 +1294,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderArrivalCrewNum}
-                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalCrewNum", true, false); }}
-                                                onBlur={() => setFieldTouched("orderHeaderArrivalCrewNum", true, false)}
+                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalCrewNum", true); }}
+                                                onBlur={() => setFieldTouched("orderHeaderArrivalCrewNum", true)}
                                                 size="small"
                                                 fullWidth
                                                 error={touched.orderHeaderArrivalCrewNum && Boolean(errors.orderHeaderArrivalCrewNum)}
@@ -1261,8 +1316,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderCrewNum}
-                                                onChange={(e) => { setFieldValue("orderHeaderCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderCrewNum", true, false); }}
-                                                onBlur={() => setFieldTouched("orderHeaderCrewNum", true, false)}
+                                                onChange={(e) => { setFieldValue("orderHeaderCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderCrewNum", true); }}
+                                                onBlur={() => setFieldTouched("orderHeaderCrewNum", true)}
                                                 size="small"
                                                 fullWidth
                                                 error={touched.orderHeaderCrewNum && Boolean(errors.orderHeaderCrewNum)}
@@ -1285,13 +1340,13 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("aircraftType", id);
                                              setFieldValue("aircraftTypeName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                             setFieldTouched("aircraftTypeName", true, false);
+                                             setFieldTouched("aircraftTypeName", true);
                                           }}
                                           getOptionLabel={(opt) => opt.airCraftName}
                                           getOptionValue={(opt) => opt.airCraftId}
                                           uppercase={true}
                                           error={touched.aircraftTypeName && Boolean(errors.aircraftTypeName)}
-                                          onBlur={() => setFieldTouched("aircraftTypeName", true, false)}
+                                          onBlur={() => setFieldTouched("aircraftTypeName", true)}
                                        />
                                        {touched.aircraftTypeName && errors.aircraftTypeName && (
                                           <div className="text-red-500 text-xs mt-1">
@@ -1314,12 +1369,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("agent", id);
                                                 setFieldValue("agentName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("agentName", true, false);
+                                                setFieldTouched("agentName", true);
                                              }}
                                              getOptionLabel={(opt) => opt.agentName}
                                              getOptionValue={(opt) => opt.agentId}
                                              error={touched.agentName && Boolean(errors.agentName)}
-                                             onBlur={() => setFieldTouched("agentName", true, false)}
+                                             onBlur={() => setFieldTouched("agentName", true)}
                                           />
                                           {touched.agentName && errors.agentName && (
                                              <div className="text-red-500 text-xs mt-1">
@@ -1338,12 +1393,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("operator", id);
                                                 setFieldValue("operatorName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("operatorName", true, false);
+                                                setFieldTouched("operatorName", true);
                                              }}
                                              getOptionLabel={(opt) => opt.operatorName}
                                              getOptionValue={(opt) => opt.operatorId}
                                              error={touched.operatorName && Boolean(errors.operatorName)}
-                                             onBlur={() => setFieldTouched("operatorName", true, false)}
+                                             onBlur={() => setFieldTouched("operatorName", true)}
                                           />
                                           {touched.operatorName && errors.operatorName && (
                                              <div className="text-red-500 text-xs mt-1">
@@ -1362,12 +1417,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("billTo", id);
                                              setFieldValue("billToName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                             setFieldTouched("billToName", true, false);
+                                             setFieldTouched("billToName", true);
                                           }}
                                           getOptionLabel={(opt) => opt.billToName}
                                           getOptionValue={(opt) => opt.billToId}
                                           error={touched.billToName && Boolean(errors.billToName)}
-                                          onBlur={() => setFieldTouched("billToName", true, false)}
+                                          onBlur={() => setFieldTouched("billToName", true)}
                                        />
                                        {touched.billToName && errors.billToName && <div className="text-red-500 text-xs mt-1">{errors.billToName}</div>}
                                     </div>
@@ -1376,8 +1431,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.invoiceTo ?? ""}
-                                             onChange={(e) => { setFieldValue("invoiceTo", e.target.value ? Number(e.target.value) : null); setFieldTouched("invoiceTo", true, false); }}
-                                             onBlur={() => setFieldTouched("invoiceTo", true, false)}
+                                             onChange={(e) => { setFieldValue("invoiceTo", e.target.value ? Number(e.target.value) : null); setFieldTouched("invoiceTo", true); }}
+                                             onBlur={() => setFieldTouched("invoiceTo", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.invoiceTo && errors.invoiceTo ? "border-red-400" : "border-gray-300"}`}
                                           >
                                              <option value="" disabled hidden />
@@ -1395,8 +1450,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.paymentMethod ?? ""}
-                                             onChange={(e) => { setFieldValue("paymentMethod", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentMethod", true, false); }}
-                                             onBlur={() => setFieldTouched("paymentMethod", true, false)}
+                                             onChange={(e) => { setFieldValue("paymentMethod", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentMethod", true); }}
+                                             onBlur={() => setFieldTouched("paymentMethod", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.paymentMethod && errors.paymentMethod ? "border-red-400" : "border-gray-300"}`}
                                           >
                                              <option value="" disabled hidden />
@@ -1417,8 +1472,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.paymentCurrency ?? ""}
-                                             onChange={(e) => { setFieldValue("paymentCurrency", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentCurrency", true, false); }}
-                                             onBlur={() => setFieldTouched("paymentCurrency", true, false)}
+                                             onChange={(e) => { setFieldValue("paymentCurrency", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentCurrency", true); }}
+                                             onBlur={() => setFieldTouched("paymentCurrency", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.paymentCurrency && errors.paymentCurrency ? "border-red-400" : "border-gray-300"}`}
                                           >
                                              <option value="" disabled hidden />
@@ -1454,12 +1509,12 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                       setFieldValue("orderHeadearGroundHandlerEmail", matched.groundHandlerEmail || "");
                                                       setFieldValue("orderHeadearGroundHandlerPhone", matched.groundHandlerPhone || "");
                                                    }
-                                                   setFieldTouched("orderHeadearGroundHandlerName", true, false);
+                                                   setFieldTouched("orderHeadearGroundHandlerName", true);
                                                 }}
                                                 getOptionLabel={(opt) => opt.groundHandlerName}
                                                 getOptionValue={(opt) => opt.groundHandlerId}
                                                 error={touched.orderHeadearGroundHandlerName && Boolean(errors.orderHeadearGroundHandlerName)}
-                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerName", true, false)}
+                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerName", true)}
                                              />
                                              {touched.orderHeadearGroundHandlerName && errors.orderHeadearGroundHandlerName && (
                                                 <div className="text-red-500 text-xs mt-1">{errors.orderHeadearGroundHandlerName}</div>
@@ -1474,7 +1529,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${errors.orderHeadearGroundHandlerEmail && touched.orderHeadearGroundHandlerEmail ? "border-red-500" : "border-gray-300"}`}
                                                 value={values.orderHeadearGroundHandlerEmail || ""}
                                                 onChange={(e) => setFieldValue("orderHeadearGroundHandlerEmail", e.target.value.replace(/[\u0600-\u06FF]/g, ""))}
-                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerEmail", true, false)}
+                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerEmail", true)}
                                              />
                                              {touched.orderHeadearGroundHandlerEmail && errors.orderHeadearGroundHandlerEmail && (
                                                 <div className="text-red-500 text-xs mt-1">{errors.orderHeadearGroundHandlerEmail}</div>
@@ -1489,7 +1544,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                 className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${errors.orderHeadearGroundHandlerPhone && touched.orderHeadearGroundHandlerPhone ? "border-red-500" : "border-gray-300"}`}
                                                 value={values.orderHeadearGroundHandlerPhone || ""}
                                                 onChange={(e) => setFieldValue("orderHeadearGroundHandlerPhone", e.target.value.replace(/[\u0600-\u06FF]/g, ""))}
-                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerPhone", true, false)}
+                                                onBlur={() => setFieldTouched("orderHeadearGroundHandlerPhone", true)}
                                              />
                                              {touched.orderHeadearGroundHandlerPhone && errors.orderHeadearGroundHandlerPhone && (
                                                 <div className="text-red-500 text-xs mt-1">{errors.orderHeadearGroundHandlerPhone}</div>
@@ -1523,9 +1578,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("date", newDate.date())
                                                       : newDate;
                                                    setFieldValue("arrivalDate", updated);
-                                                   setFieldTouched("arrivalDate", true, false);
+                                                   setFieldTouched("arrivalDate", true, true);
+                                                   setFieldTouched("arrivalDate", true);
                                                 }}
-                                                onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
                                                       size: "small",
@@ -1565,9 +1621,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("hour", newTime.hour())
                                                          .set("minute", newTime.minute());
                                                    setFieldValue("arrivalDate", updated);
-                                                   setFieldTouched("arrivalDate", true, false);
+                                                   setFieldTouched("arrivalDate", true, true);
+                                                   setFieldTouched("arrivalDate", true);
                                                 }}
-                                                onClose={() => setFieldTouched("arrivalDate", true, false)}
+                                                onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
                                                       size: "small",
@@ -1606,9 +1663,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("date", newDate.date())
                                                          : newDate;
                                                       setFieldValue("arrivalDeliveryDate", updated);
-                                                      setFieldTouched("arrivalDeliveryDate", true, false);
+                                                   setFieldTouched("arrivalDeliveryDate", true, true);
+                                                      setFieldTouched("arrivalDeliveryDate", true);
                                                    }}
-                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
+                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
@@ -1653,9 +1711,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute());
                                                       setFieldValue("arrivalDeliveryDate", updated);
-                                                      setFieldTouched("arrivalDeliveryDate", true, false);
+                                                   setFieldTouched("arrivalDeliveryDate", true, true);
+                                                      setFieldTouched("arrivalDeliveryDate", true);
                                                    }}
-                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true, false)}
+                                                   onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
@@ -1694,9 +1753,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("date", newDate.date())
                                                          : newDate;
                                                       setFieldValue("departureDeliveryDate", updated);
-                                                      setFieldTouched("departureDeliveryDate", true, false);
+                                                   setFieldTouched("departureDeliveryDate", true, true);
+                                                      setFieldTouched("departureDeliveryDate", true);
                                                    }}
-                                                   onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                   onClose={() => setFieldTouched("departureDeliveryDate", true)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
@@ -1740,9 +1800,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute());
                                                       setFieldValue("departureDeliveryDate", updated);
-                                                      setFieldTouched("departureDeliveryDate", true, false);
+                                                   setFieldTouched("departureDeliveryDate", true, true);
+                                                      setFieldTouched("departureDeliveryDate", true);
                                                    }}
-                                                   onClose={() => setFieldTouched("departureDeliveryDate", true, false)}
+                                                   onClose={() => setFieldTouched("departureDeliveryDate", true)}
                                                    slotProps={{
                                                       textField: {
                                                          size: "small",
@@ -1780,9 +1841,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("date", newDate.date())
                                                       : newDate;
                                                    setFieldValue("departureDate", updated);
-                                                   setFieldTouched("departureDate", true, false);
+                                                   setFieldTouched("departureDate", true, true);
+                                                   setFieldTouched("departureDate", true);
                                                 }}
-                                                onClose={() => setFieldTouched("departureDate", true, false)}
+                                                onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
                                                       size: "small",
@@ -1823,9 +1885,10 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("hour", newTime.hour())
                                                          .set("minute", newTime.minute());
                                                    setFieldValue("departureDate", updated);
-                                                   setFieldTouched("departureDate", true, false);
+                                                   setFieldTouched("departureDate", true, true);
+                                                   setFieldTouched("departureDate", true);
                                                 }}
-                                                onClose={() => setFieldTouched("departureDate", true, false)}
+                                                onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
                                                       size: "small",
@@ -1848,6 +1911,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                  </LocalizationProvider>
                               )}
 
+                              </div>
+
                               {/* Navigation Footer (Extremely important for form flow) */}
                               <div className="mt-auto pt-5 mt-6 border-t border-gray-100 flex items-center justify-between">
                                  <button
@@ -1863,11 +1928,25 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
 
                                  <button
                                     type="button"
-                                    onClick={submitForm}
+                                    onClick={(e) => {
+                                       if (isGuestSubmitted && step === stepsConfig.length - 1) {
+                                          e.preventDefault();
+                                          onlineOrderToast.error(lang === "AR" ? "لقد تم إرسال الطلب إلى المبيعات، يرجى الانتظار حتى يتم التواصل معك" : "The order has been sent to our sales. Please wait until they reach you.", { duration: 5000 });
+                                       } else {
+                                          submitForm();
+                                       }
+                                    }}
                                     disabled={isSubmitting}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all shadow-md ${isGuestSubmitted && step === stepsConfig.length - 1
+                                       ? "bg-gray-400 text-white cursor-pointer hover:bg-gray-500" 
+                                       : "bg-primary text-white hover:bg-primary/90 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"}`}
                                  >
-                                    {step === stepsConfig.length - 1 ? (
+                                    {isGuestSubmitted && step === stepsConfig.length - 1 ? (
+                                       <>
+                                          <FaCheck size={14} />{" "}
+                                          {lang === "AR" ? "تم إرسال الطلب" : "Order Sent"}
+                                       </>
+                                    ) : step === stepsConfig.length - 1 ? (
                                        <>
                                           <FaCheck size={14} />{" "}
                                           {langText.submit?.[lang] || "Submit Order"}

@@ -193,11 +193,18 @@ function ProductDetailsModal({
             </div>}
 
             <button
-              onClick={handleAddToCart}
-              className="bg-primary text-white font-semibold py-3 px-6 rounded-full hover:bg-opacity-95 active:scale-95 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer min-w-[140px]"
+              onClick={(e) => {
+                  if (isGuestSubmitted) {
+                      e.preventDefault();
+                      handleAddToCart();
+                  } else {
+                      handleAddToCart();
+                  }
+              }}
+              className={`font-semibold py-3 px-6 rounded-full transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer min-w-[140px] ${isGuestSubmitted ? 'bg-gray-400 text-white' : 'bg-primary text-white hover:bg-opacity-95 active:scale-95 shadow-primary/20'}`}
             >
               <span className="text-sm">
-                {lang === "EN" ? "Add To Order" : "أضف إلى الطلب"}
+                {isGuestSubmitted ? (lang === "EN" ? "Order Sent" : "تم إرسال الطلب") : (lang === "EN" ? "Add To Order" : "أضف إلى الطلب")}
               </span>
             </button>
           </div>

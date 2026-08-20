@@ -48,6 +48,7 @@ function Home() {
   const { cart, updateQuantity, setSelectedOrder, selectedOrder, removeFromCart } = useCartStore();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
+  const isGuestSubmitted = !user && !!localStorage.getItem("GUEST_SUBMITTED_ORDER");
   const [reviewsIds, setReviewsIds] = useState([]);
   const navigate = useNavigate();
   const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false);
@@ -250,7 +251,7 @@ function Home() {
                         </> : null}
                         <div className="col-span-1 flex justify-center">
                           <button
-                            disabled={user && deleteMutation.isPending && deleteMutation.variables == item.orderDetailsId}
+                            disabled={isGuestSubmitted || (user && deleteMutation.isPending && deleteMutation.variables == item.orderDetailsId)}
                             onClick={() => {
                               if (!user) {
                                 removeFromCart(item.cartItemId);
@@ -325,7 +326,7 @@ function Home() {
               className="w-full py-3 mt-1 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #C5A76D 0%, #b08848 100%)' }}
             >
-              {lang === 'AR' ? 'أرسل طلب' : 'Send Order Request'}
+              {isGuestSubmitted ? (lang === "AR" ? "عرض الطلب المرسل" : "View Sent Order") : (lang === "AR" ? "أرسل طلب" : "Send Order Request")}
             </button>
           }
         </div>
@@ -406,7 +407,8 @@ function Home() {
       )}
 
 
-      <div className="flex items-center justify-center py-5">
+      {!isGuestSubmitted && (
+<div className="flex items-center justify-center py-5">
         <motion.button
           id="guide-add-order-btn"
           initial={{ opacity: 0, scale: 0.9 }}
@@ -421,6 +423,7 @@ function Home() {
           {user ? <span>{langText.addNewOrder?.[lang] || "Add New Order"}</span> : <span>{langText.reQuestFullMenu?.[lang] || "Request Full Menu"}</span>}
         </motion.button>
       </div>
+)}
 
       <div dir={lang === 'AR' ? 'rtl' : 'ltr'} className="container mx-auto px-3 pb-10">
         <Bars setSelectedBar={setSelectedBar} selectedBar={selectedBar} lang={lang} />
