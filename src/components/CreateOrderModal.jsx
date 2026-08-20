@@ -608,8 +608,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
          originalProfileSettings.current = null;
       } else {
          if (!user) {
-            // Always allow editing when the modal is reopened
-            setIsGuestSubmitted(false);
+            const hasSubmitted = !!localStorage.getItem("GUEST_SUBMITTED_ORDER");
+            setIsGuestSubmitted(hasSubmitted);
             
             const draft = restoreGuestDraft(stepsConfig.length);
             if (draft) {
@@ -1008,7 +1008,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyPersonalName"
                                           value={values.companyPersonalName}
-                                          onChange={(e) => { setFieldValue("companyPersonalName", e.target.value); setFieldTouched("companyPersonalName", true, true); }}
+                                          onChange={(e) => { setFieldValue("companyPersonalName", e.target.value); }}
                                           onBlur={() => setFieldTouched("companyPersonalName", true)}
                                           error={touched.companyPersonalName && Boolean(errors.companyPersonalName)}
                                           helperText={touched.companyPersonalName && errors.companyPersonalName}
@@ -1024,7 +1024,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyName"
                                           value={values.companyName}
-                                          onChange={(e) => { setFieldValue("companyName", e.target.value); setFieldTouched("companyName", true, true); }}
+                                          onChange={(e) => { setFieldValue("companyName", e.target.value); }}
                                           onBlur={() => setFieldTouched("companyName", true)}
                                           error={touched.companyName && Boolean(errors.companyName)}
                                           helperText={touched.companyName && errors.companyName}
@@ -1041,7 +1041,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           name="email"
                                           type="email"
                                           value={values.email}
-                                          onChange={(e) => { setFieldValue("email", e.target.value); setFieldTouched("email", true, true); }}
+                                          onChange={(e) => { setFieldValue("email", e.target.value); }}
                                           onBlur={() => setFieldTouched("email", true)}
                                           error={touched.email && Boolean(errors.email)}
                                           helperText={touched.email && errors.email}
@@ -1057,7 +1057,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="companyLink"
                                           value={values.companyLink}
-                                          onChange={(e) => { setFieldValue("companyLink", e.target.value); setFieldTouched("companyLink", true, true); }}
+                                          onChange={(e) => { setFieldValue("companyLink", e.target.value); }}
                                           onBlur={() => setFieldTouched("companyLink", true)}
                                           error={touched.companyLink && Boolean(errors.companyLink)}
                                           helperText={touched.companyLink && errors.companyLink}
@@ -1074,7 +1074,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           select
                                           name="contryID"
                                           value={values.contryID}
-                                          onChange={(e) => { setFieldValue("contryID", e.target.value); setFieldTouched("contryID", true, true); }}
+                                          onChange={(e) => { setFieldValue("contryID", e.target.value); }}
                                           onBlur={() => setFieldTouched("contryID", true)}
                                           error={touched.contryID && Boolean(errors.contryID)}
                                           helperText={touched.contryID && errors.contryID}
@@ -1096,7 +1096,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <TextField
                                           name="mobil"
                                           value={values.mobil}
-                                          onChange={(e) => { setFieldValue("mobil", e.target.value); setFieldTouched("mobil", true, true); }}
+                                          onChange={(e) => { setFieldValue("mobil", e.target.value); }}
                                           onBlur={() => setFieldTouched("mobil", true)}
                                           error={touched.mobil && Boolean(errors.mobil)}
                                           helperText={touched.mobil && errors.mobil}
@@ -1130,8 +1130,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    found.stationDefualtPriceHeaderId,
                                                 );
                                              }
-                                             setFieldTouched("station", true);
-                                          }}
+                                             }}
                                           getOptionLabel={(opt) => opt.stationName}
                                           getOptionValue={(opt) => opt.stationId}
 														 error={touched.station && Boolean(errors.station) && !values.station}
@@ -1167,8 +1166,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                    setFieldValue("orderHeaderIsDepartur", true)
                                                    setFieldValue("orderHeaderIsArrival", true)
                                                 }
-                                                setFieldTouched("orderHeaderFlightType", true);
-                                             }}
+                                                }}
                                              onBlur={() => setFieldTouched("orderHeaderFlightType", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] border-gray-300 font-medium ${!user ? "opacity-80 cursor-not-allowed" : ""}`}
                                           >
@@ -1194,8 +1192,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("flightNumber", id);
                                              setFieldValue("flightNumberName", name);
-                                             setFieldTouched("flightNumberName", true);
-                                          }}
+                                             }}
                                           getOptionLabel={(opt) => {
                                              const name = opt?.flightNumberName;
                                              return typeof name === "object" ? (name?.flightNumberName ?? "") : (name ?? "");
@@ -1225,8 +1222,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("registration", id);
                                                 setFieldValue("registrationName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("registrationName", true);
-                                             }}
+                                                }}
                                              getOptionLabel={(opt) => opt.registrationName}
                                              getOptionValue={(opt) => opt.registrationId}
                                              uppercase={true}
@@ -1249,7 +1245,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderArrivalPaxnum}
-                                                onChange={(e) => { setFieldValue("orderHeaderArrivalPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalPaxnum", true); }}
+                                                onChange={(e) => { setFieldValue("orderHeaderArrivalPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); }}
                                                 onBlur={() => setFieldTouched("orderHeaderArrivalPaxnum", true)}
                                                 size="small"
                                                 fullWidth
@@ -1272,7 +1268,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderPaxnum}
-                                                onChange={(e) => { setFieldValue("orderHeaderPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderPaxnum", true); }}
+                                                onChange={(e) => { setFieldValue("orderHeaderPaxnum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); }}
                                                 onBlur={() => setFieldTouched("orderHeaderPaxnum", true)}
                                                 size="small"
                                                 fullWidth
@@ -1294,7 +1290,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderArrivalCrewNum}
-                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderArrivalCrewNum", true); }}
+                                                onChange={(e) => { setFieldValue("orderHeaderArrivalCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); }}
                                                 onBlur={() => setFieldTouched("orderHeaderArrivalCrewNum", true)}
                                                 size="small"
                                                 fullWidth
@@ -1316,7 +1312,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              <TextField
                                                 type="number"
                                                 value={values.orderHeaderCrewNum}
-                                                onChange={(e) => { setFieldValue("orderHeaderCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); setFieldTouched("orderHeaderCrewNum", true); }}
+                                                onChange={(e) => { setFieldValue("orderHeaderCrewNum", e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value))); }}
                                                 onBlur={() => setFieldTouched("orderHeaderCrewNum", true)}
                                                 size="small"
                                                 fullWidth
@@ -1340,8 +1336,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("aircraftType", id);
                                              setFieldValue("aircraftTypeName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                             setFieldTouched("aircraftTypeName", true);
-                                          }}
+                                             }}
                                           getOptionLabel={(opt) => opt.airCraftName}
                                           getOptionValue={(opt) => opt.airCraftId}
                                           uppercase={true}
@@ -1369,8 +1364,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("agent", id);
                                                 setFieldValue("agentName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("agentName", true);
-                                             }}
+                                                }}
                                              getOptionLabel={(opt) => opt.agentName}
                                              getOptionValue={(opt) => opt.agentId}
                                              error={touched.agentName && Boolean(errors.agentName)}
@@ -1393,8 +1387,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                              onChange={(id, name) => {
                                                 setFieldValue("operator", id);
                                                 setFieldValue("operatorName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                                setFieldTouched("operatorName", true);
-                                             }}
+                                                }}
                                              getOptionLabel={(opt) => opt.operatorName}
                                              getOptionValue={(opt) => opt.operatorId}
                                              error={touched.operatorName && Boolean(errors.operatorName)}
@@ -1417,8 +1410,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                           onChange={(id, name) => {
                                              setFieldValue("billTo", id);
                                              setFieldValue("billToName", name.replace(/[\u0600-\u06FF]/g, ""));
-                                             setFieldTouched("billToName", true);
-                                          }}
+                                             }}
                                           getOptionLabel={(opt) => opt.billToName}
                                           getOptionValue={(opt) => opt.billToId}
                                           error={touched.billToName && Boolean(errors.billToName)}
@@ -1431,7 +1423,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.invoiceTo ?? ""}
-                                             onChange={(e) => { setFieldValue("invoiceTo", e.target.value ? Number(e.target.value) : null); setFieldTouched("invoiceTo", true); }}
+                                             onChange={(e) => { setFieldValue("invoiceTo", e.target.value ? Number(e.target.value) : null); }}
                                              onBlur={() => setFieldTouched("invoiceTo", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.invoiceTo && errors.invoiceTo ? "border-red-400" : "border-gray-300"}`}
                                           >
@@ -1450,7 +1442,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.paymentMethod ?? ""}
-                                             onChange={(e) => { setFieldValue("paymentMethod", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentMethod", true); }}
+                                             onChange={(e) => { setFieldValue("paymentMethod", e.target.value ? Number(e.target.value) : null); }}
                                              onBlur={() => setFieldTouched("paymentMethod", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.paymentMethod && errors.paymentMethod ? "border-red-400" : "border-gray-300"}`}
                                           >
@@ -1472,7 +1464,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                        <div className="relative">
                                           <select
                                              value={values.paymentCurrency ?? ""}
-                                             onChange={(e) => { setFieldValue("paymentCurrency", e.target.value ? Number(e.target.value) : null); setFieldTouched("paymentCurrency", true); }}
+                                             onChange={(e) => { setFieldValue("paymentCurrency", e.target.value ? Number(e.target.value) : null); }}
                                              onBlur={() => setFieldTouched("paymentCurrency", true)}
                                              className={`w-full h-[30px] px-3 border rounded-[50px] focus:outline-none focus:border-primary appearance-none text-xs transition-all bg-[var(--color-bg-box)] text-[var(--color-primary)] font-medium ${touched.paymentCurrency && errors.paymentCurrency ? "border-red-400" : "border-gray-300"}`}
                                           >
@@ -1509,8 +1501,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                       setFieldValue("orderHeadearGroundHandlerEmail", matched.groundHandlerEmail || "");
                                                       setFieldValue("orderHeadearGroundHandlerPhone", matched.groundHandlerPhone || "");
                                                    }
-                                                   setFieldTouched("orderHeadearGroundHandlerName", true);
-                                                }}
+                                                   }}
                                                 getOptionLabel={(opt) => opt.groundHandlerName}
                                                 getOptionValue={(opt) => opt.groundHandlerId}
                                                 error={touched.orderHeadearGroundHandlerName && Boolean(errors.orderHeadearGroundHandlerName)}
@@ -1576,11 +1567,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("year", newDate.year())
                                                          .set("month", newDate.month())
                                                          .set("date", newDate.date())
-                                                      : newDate;
+                                                      : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
                                                    setFieldValue("arrivalDate", updated);
-                                                   setFieldTouched("arrivalDate", true, true);
-                                                   setFieldTouched("arrivalDate", true);
-                                                }}
+                                                   }}
                                                 onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1621,9 +1610,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("hour", newTime.hour())
                                                          .set("minute", newTime.minute());
                                                    setFieldValue("arrivalDate", updated);
-                                                   setFieldTouched("arrivalDate", true, true);
-                                                   setFieldTouched("arrivalDate", true);
-                                                }}
+                                                   }}
                                                 onClose={() => setFieldTouched("arrivalDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1661,10 +1648,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("year", newDate.year())
                                                             .set("month", newDate.month())
                                                             .set("date", newDate.date())
-                                                         : newDate;
+                                                         : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
                                                       setFieldValue("arrivalDeliveryDate", updated);
-                                                   setFieldTouched("arrivalDeliveryDate", true, true);
-                                                      setFieldTouched("arrivalDeliveryDate", true);
                                                    }}
                                                    onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
                                                    slotProps={{
@@ -1711,8 +1696,6 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute());
                                                       setFieldValue("arrivalDeliveryDate", updated);
-                                                   setFieldTouched("arrivalDeliveryDate", true, true);
-                                                      setFieldTouched("arrivalDeliveryDate", true);
                                                    }}
                                                    onClose={() => setFieldTouched("arrivalDeliveryDate", true)}
                                                    slotProps={{
@@ -1751,10 +1734,8 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("year", newDate.year())
                                                             .set("month", newDate.month())
                                                             .set("date", newDate.date())
-                                                         : newDate;
+                                                         : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
                                                       setFieldValue("departureDeliveryDate", updated);
-                                                   setFieldTouched("departureDeliveryDate", true, true);
-                                                      setFieldTouched("departureDeliveryDate", true);
                                                    }}
                                                    onClose={() => setFieldTouched("departureDeliveryDate", true)}
                                                    slotProps={{
@@ -1800,8 +1781,6 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                             .set("hour", newTime.hour())
                                                             .set("minute", newTime.minute());
                                                       setFieldValue("departureDeliveryDate", updated);
-                                                   setFieldTouched("departureDeliveryDate", true, true);
-                                                      setFieldTouched("departureDeliveryDate", true);
                                                    }}
                                                    onClose={() => setFieldTouched("departureDeliveryDate", true)}
                                                    slotProps={{
@@ -1839,11 +1818,9 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("year", newDate.year())
                                                          .set("month", newDate.month())
                                                          .set("date", newDate.date())
-                                                      : newDate;
+                                                      : newDate.hour(dayjs().hour() + 4).minute(dayjs().minute());
                                                    setFieldValue("departureDate", updated);
-                                                   setFieldTouched("departureDate", true, true);
-                                                   setFieldTouched("departureDate", true);
-                                                }}
+                                                   }}
                                                 onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
@@ -1885,9 +1862,7 @@ export default function CreateOrderModal({ isOpen, onClose, oldOrderId = null })
                                                          .set("hour", newTime.hour())
                                                          .set("minute", newTime.minute());
                                                    setFieldValue("departureDate", updated);
-                                                   setFieldTouched("departureDate", true, true);
-                                                   setFieldTouched("departureDate", true);
-                                                }}
+                                                   }}
                                                 onClose={() => setFieldTouched("departureDate", true)}
                                                 slotProps={{
                                                    textField: {
